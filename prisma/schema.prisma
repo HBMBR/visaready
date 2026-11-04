@@ -1,0 +1,40 @@
+// VisaReady — database schema
+// Run: `npx prisma migrate dev --name init` after configuring DATABASE_URL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// A row exists ONLY for people who clicked the link in their verification
+// email. Unconfirmed signups are never stored — their details travel inside the
+// encrypted link (see lib/signup-token.ts) until it is clicked.
+model Signup {
+  id                String    @id @default(cuid())
+  firstName         String    @db.VarChar(60)
+  lastName          String    @db.VarChar(60)
+  email             String    @unique @db.VarChar(255)
+  phone             String    @db.VarChar(40)
+  nationality       String    @db.VarChar(8) // ISO 3166-1 alpha-2, or "OTHER"
+  desiredRole       String    @db.VarChar(80)
+
+  // When the email link was clicked (= when this row was created)
+  verifiedAt        DateTime  @default(now())
+
+  // Founder badge — assigned atomically at verification (1..1000)
+  founderNumber     Int?      @unique
+
+  // Audit (captured at the verification click)
+  ipAddress         String?   @db.VarChar(64)
+  userAgent         String?   @db.VarChar(500)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([verifiedAt])
+  @@index([createdAt])
+}
