@@ -6,6 +6,7 @@ import { sealSignup } from "@/lib/signup-token";
 import { sendEmail } from "@/lib/email";
 import { verificationEmail } from "@/lib/email-templates/verification";
 import { getSiteUrl } from "@/lib/site";
+import { throttled, clientIp } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // crypto
@@ -19,39 +20,10 @@ const VALID_NATIONALITY = new Set<string>([
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[+\d][\d\s\-()]{5,30}$/;
 
-// ---------------------------------------------------------------------------
-// Throttle. With no payment step in front of it, this endpoint sends an email
-// to whatever address is submitted, so it must not be usable to spam people.
-// In-memory and per-instance: good enough for a single server / warm lambda,
-// NOT a hard guarantee on multi-instance serverless — put a shared limiter
-// (e.g. Upstash, Vercel firewall rule) in front for that.
-// ---------------------------------------------------------------------------
-const WINDOW_MS = 60 * 60 * 1000;
+// With no payment step in front of it, this endpoint sends an email to whatever
+// address is submitted, so it's throttled to stop it being used to spam people.
 const MAX_PER_IP = 10;
 const MAX_PER_EMAIL = 3;
-const hits = new Map<string, number[]>();
-
-function throttled(key: string, max: number): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= max) {
-    hits.set(key, recent);
-    return true;
-  }
-  recent.push(now);
-  hits.set(key, recent);
-  if (hits.size > 10_000) {
-    // crude cap so the map can't grow unbounded
-    for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k);
-  }
-  return false;
-}
-
-function extractIp(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]?.trim() || "unknown";
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -87,7 +59,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Please select a desired role." }, { status: 400 });
   }
 
-  if (throttled(`ip:${extractIp(request)}`, MAX_PER_IP) || throttled(`email:${email}`, MAX_PER_EMAIL)) {
+  if (throttled(`signup-ip:${clientIp(request.headers)}`, MAX_PER_IP) || throttled(`signup-email:${email}`, MAX_PER_EMAIL)) {
     return NextResponse.json(
       { error: "Too many sign-up attempts. Please check your inbox or try again in an hour." },
       { status: 429 }

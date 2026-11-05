@@ -118,6 +118,15 @@ visaready/
 
 Re-submitting with an already-registered email returns the same response but sends nothing, so the form can't be used to check who has signed up. Clicking a link twice is idempotent. `/api/signup` has a best-effort in-memory throttle (10/hour per IP, 3/hour per email); put a shared rate limiter in front of it for multi-instance deployments.
 
+## Staff Dashboard (`/admin`)
+
+For Marketing and Support. It shows signup totals, signups per day, breakdowns by nationality and role, and a searchable, filterable list with email, call and WhatsApp links. It also has a CSV export of the current filter.
+
+- **Access:** set `ADMIN_EMAILS` to a comma-separated list of staff addresses. Staff go to `/admin`, enter their email, and get a sign-in link valid for 15 minutes. A session lasts 12 hours. Removing an address from `ADMIN_EMAILS` revokes access on that person's next page load. No passwords are stored.
+- Requires working SMTP (sign-in links are emailed) and `SIGNUP_TOKEN_SECRET`, which also signs staff sessions; rotating it signs everyone out.
+- Sign-ins and CSV exports are logged with the staff email (Vercel → Logs).
+- The page is `noindex` and every request re-checks the session.
+
 ## Testing
 
 - **Health check:** open `/api/health` on any deployment (or `localhost:3000/api/health`). It reports pass/fail for the database (connected + table migrated), `SIGNUP_TOKEN_SECRET`, SMTP login, and where email links will point. No setting values are shown; details are in the server logs.

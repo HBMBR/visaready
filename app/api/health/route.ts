@@ -58,7 +58,13 @@ export async function GET() {
       : { ok: false, hint: "SMTP settings present but login/connection failed (check host, port, user, password)." };
   }
 
-  // 4. Where email links will point
+  // 4. Staff dashboard access list (count only — never the addresses)
+  const staffCount = (process.env.ADMIN_EMAILS ?? "").split(/[,\s]+/).filter(Boolean).length;
+  checks.adminEmails = staffCount
+    ? { ok: true, hint: `${staffCount} staff address${staffCount === 1 ? "" : "es"} can sign in to /admin.` }
+    : { ok: false, hint: "ADMIN_EMAILS is not set — nobody can sign in to /admin." };
+
+  // 5. Where email links will point
   let siteUrl: string | null = null;
   try {
     siteUrl = getSiteUrl();
