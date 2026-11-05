@@ -4,13 +4,25 @@
 // client-controlled, and a verification link built from them could be pointed
 // at an attacker's domain, leaking the token when the user clicks it.
 
+function https(host: string): string {
+  return `https://${host.trim().replace(/\/+$/, "")}`;
+}
+
 export function getSiteUrl(): string {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
   if (configured) return configured.replace(/\/+$/, "");
 
-  // Vercel sets this server-side for preview deployments; it is not user input.
-  const vercel = process.env.VERCEL_URL?.trim();
-  if (vercel) return `https://${vercel.replace(/\/+$/, "")}`;
+  // Vercel system env vars (server-side, not user input).
+  // VERCEL_URL is the per-deployment hash URL, which sits behind Vercel
+  // Deployment Protection — a link to it would show a Vercel login page to the
+  // public. So prefer the production domain, then the stable branch URL.
+  const env = process.env.VERCEL_ENV;
+  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  const branch = process.env.VERCEL_BRANCH_URL;
+  const deployment = process.env.VERCEL_URL;
+  if (env === "production" && prod) return https(prod);
+  if (branch) return https(branch);
+  if (deployment) return https(deployment);
 
   if (process.env.NODE_ENV !== "production") {
     return "http://localhost:3000";

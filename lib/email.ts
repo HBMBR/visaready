@@ -40,6 +40,15 @@ export interface SendEmailInput {
 
 export async function sendEmail({ to, subject, html, text }: SendEmailInput): Promise<void> {
   const from = process.env.SMTP_FROM ?? "VisaReady <noreply@visaready.co>";
+
+  // Local testing without an SMTP account: print the email (and its links) to
+  // the terminal instead of failing. Never used in production / on Vercel.
+  const smtpMissing = !process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS;
+  if (smtpMissing && process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
+    console.log(`\n[email:dev] SMTP not configured — not sent.\nTo: ${to}\nSubject: ${subject}\n\n${text}\n`);
+    return;
+  }
+
   const transporter = getTransporter();
 
   await transporter.sendMail({
