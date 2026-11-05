@@ -118,6 +118,12 @@ visaready/
 
 Re-submitting with an already-registered email returns the same response but sends nothing, so the form can't be used to check who has signed up. Clicking a link twice is idempotent. `/api/signup` has a best-effort in-memory throttle (10/hour per IP, 3/hour per email); put a shared rate limiter in front of it for multi-instance deployments.
 
+## Testing
+
+- **Health check:** open `/api/health` on any deployment (or `localhost:3000/api/health`). It reports pass/fail for the database (connected + table migrated), `SIGNUP_TOKEN_SECRET`, SMTP login, and where email links will point. No setting values are shown; details are in the server logs.
+- **Locally without SMTP:** leave `SMTP_*` empty and the confirmation email (with its link) is printed to the `npm run dev` terminal instead of sent.
+- **Migrations:** Vercel runs `npm run vercel-build`, which applies pending migrations (`prisma migrate deploy`) before building. After changing `schema.prisma`, run `npm run db:migrate -- --name <change>` locally and commit the new folder in `prisma/migrations/`.
+
 ## Deployment (Vercel)
 
 ```bash
