@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 import { COUNTRIES } from "@/lib/countries";
 import { ROLES } from "@/lib/roles";
+import { DESTINATIONS, destinationName } from "@/lib/destinations";
 import {
   PAGE_SIZE,
   countryName,
@@ -15,7 +16,6 @@ import CopyEmails from "./CopyEmails";
 
 export const dynamic = "force-dynamic";
 
-const TOTAL_FOUNDING_SPOTS = 1000;
 const DAY = 86_400_000;
 
 interface PageProps {
@@ -37,24 +37,43 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
 
   // "verifiedAt" is a timestamp without time zone holding UTC (Prisma's default),
   // so date_trunc on it directly gives UTC days.
-  const [total, last7, founders, daily, byNationality, byRole, matching, rows] = await Promise.all([
+  const [total, last7, referralsCounted, unsubscribed, daily, byNationality, byRole, byDestination, topReferrers, matching, rows] = await Promise.all([
     prisma.signup.count(),
     prisma.signup.count({ where: { verifiedAt: { gte: new Date(now - 7 * DAY) } } }),
-    prisma.signup.count({ where: { founderNumber: { not: null } } }),
+    prisma.signup.count({ where: { referralCounted: true } }),
+    prisma.signup.count({ where: { unsubscribedAt: { not: null } } }),
     prisma.$queryRaw<{ d: Date; n: number }[]>`
       SELECT date_trunc('day', "verifiedAt") AS d, count(*)::int AS n
       FROM "Signup" WHERE "verifiedAt" >= ${since30}
       GROUP BY 1 ORDER BY 1`,
     prisma.signup.groupBy({ by: ["nationality"], _count: { _all: true }, orderBy: { _count: { nationality: "desc" } } }),
     prisma.signup.groupBy({ by: ["desiredRole"], _count: { _all: true }, orderBy: { _count: { desiredRole: "desc" } } }),
+    prisma.signup.groupBy({ by: ["destination"], _count: { _all: true }, orderBy: { _count: { destination: "desc" } } }),
+    prisma.signup.groupBy({
+      by: ["referredById"],
+      where: { referralCounted: true, referredById: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { referredById: "desc" } },
+      take: 10,
+    }),
     prisma.signup.count({ where }),
     prisma.signup.findMany({
       where,
       orderBy: { verifiedAt: "desc" },
       skip: (filters.page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
+      include: {
+        referredBy: { select: { firstName: true, lastName: true, email: true } },
+        _count: { select: { referrals: { where: { referralCounted: true } } } },
+      },
     }),
   ]);
+
+  const referrerRows = await prisma.signup.findMany({
+    where: { id: { in: topReferrers.map((r) => r.referredById!).filter(Boolean) } },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  const referrerName = new Map(referrerRows.map((r) => [r.id, `${r.firstName} ${r.lastName}`]));
 
   // Fill gaps so every one of the last 30 days has a bar
   const perDay = new Map(daily.map((r) => [new Date(r.d).toISOString().slice(0, 10), r.n]));
@@ -89,7 +108,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
         <Stat label="Total signups" value={total} />
         <Stat label="Last 7 days" value={last7} />
         <Stat label="Last 30 days" value={last30} />
-        <Stat label="Founding seats left" value={Math.max(0, TOTAL_FOUNDING_SPOTS - founders)} sub={`of ${TOTAL_FOUNDING_SPOTS.toLocaleString()}`} />
+        <Stat label="Confirmed referrals" value={referralsCounted} sub={unsubscribed ? `${unsubscribed.toLocaleString()} unsubscribed from emails` : undefined} />
       </section>
 
       {/* ── Charts ── */}
@@ -114,6 +133,15 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
           rows={byNationality.map((r) => ({ label: countryName(r.nationality), n: r._count._all }))}
         />
         <Breakdown title="By desired role" rows={byRole.map((r) => ({ label: r.desiredRole, n: r._count._all }))} />
+        <Breakdown
+          title="By destination"
+          rows={byDestination.map((r) => ({ label: r.destination ? destinationName(r.destination) : "Not asked (early signups)", n: r._count._all }))}
+        />
+        <Breakdown
+          title="Top referrers"
+          empty="No confirmed referrals yet."
+          rows={topReferrers.map((r) => ({ label: referrerName.get(r.referredById!) ?? "—", n: r._count._all }))}
+        />
       </section>
 
       {/* ── Filters ── */}
@@ -133,6 +161,12 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
+          <select name="destination" defaultValue={filters.destination} aria-label="Destination">
+            <option value="">All destinations</option>
+            {DESTINATIONS.map((d) => (
+              <option key={d.code} value={d.code}>{d.label}</option>
+            ))}
+          </select>
           <label className="adm-date">From <input type="date" name="from" defaultValue={filters.from} /></label>
           <label className="adm-date">To <input type="date" name="to" defaultValue={filters.to} /></label>
           <button className="adm-btn adm-btn-primary" type="submit">Apply</button>
@@ -144,7 +178,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             <b>{matching.toLocaleString()}</b> {filtered ? "matching" : "total"} signup{matching === 1 ? "" : "s"}
           </span>
           <span className="adm-tablebar-actions">
-            <CopyEmails emails={rows.map((r) => r.email)} />
+            <CopyEmails emails={rows.filter((r) => !r.unsubscribedAt).map((r) => r.email)} />
             <a className="adm-btn adm-btn-primary" href={exportHref}>
               Export CSV{filtered ? " (filtered)" : ""}
             </a>
@@ -161,6 +195,9 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                 <th>Phone</th>
                 <th>Nationality</th>
                 <th>Desired role</th>
+                <th>Destination</th>
+                <th>Referrals</th>
+                <th>Referred by</th>
                 <th>Founder #</th>
                 <th>Signed up</th>
               </tr>
@@ -168,7 +205,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="adm-empty">
+                  <td colSpan={10} className="adm-empty">
                     {filtered ? "No signups match these filters." : "No confirmed signups yet."}
                   </td>
                 </tr>
@@ -178,9 +215,12 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                 return (
                   <tr key={r.id}>
                     <td className="adm-name">{r.firstName} {r.lastName}</td>
-                    <td><a href={`mailto:${r.email}`}>{r.email}</a></td>
+                    <td>
+                      <a href={`mailto:${r.email}`}>{r.email}</a>
+                      {r.unsubscribedAt && <span className="adm-tag" title={`Unsubscribed ${fmtDate(r.unsubscribedAt)}`}>Unsubscribed</span>}
+                    </td>
                     <td className="adm-phone">
-                      <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`}>{r.phone}</a>
+                      {r.phone ? <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`}>{r.phone}</a> : <span className="adm-mute">—</span>}
                       {wa && (
                         <a className="adm-wa" href={wa} target="_blank" rel="noopener noreferrer" title="Open in WhatsApp">
                           WhatsApp
@@ -189,6 +229,18 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                     </td>
                     <td>{countryName(r.nationality)}</td>
                     <td>{r.desiredRole}</td>
+                    <td>{destinationName(r.destination)}</td>
+                    <td className="adm-num">{r._count.referrals || "—"}</td>
+                    <td>
+                      {r.referredBy ? (
+                        <span title={r.referredBy.email}>
+                          {r.referredBy.firstName} {r.referredBy.lastName}
+                          {!r.referralCounted && <span className="adm-tag" title="Same phone or same IP within 24h as the referrer, so it isn't counted">not counted</span>}
+                        </span>
+                      ) : (
+                        <span className="adm-mute">—</span>
+                      )}
+                    </td>
                     <td>{r.founderNumber ? `#${String(r.founderNumber).padStart(4, "0")}` : "—"}</td>
                     <td className="adm-nowrap">{fmtDate(r.verifiedAt)}</td>
                   </tr>
@@ -212,8 +264,8 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
       </section>
 
       <p className="adm-foot adm-mute">
-        Contact details are personal data. Use them only to communicate about VisaReady, and only send marketing to
-        people who have agreed to receive it.
+        Contact details are personal data. Use them only to communicate about VisaReady, and never email people
+        marked Unsubscribed (they&apos;re left out of &ldquo;Copy emails&rdquo;). Founder # is sign-up order, for staff only.
       </p>
     </main>
   );
@@ -229,13 +281,13 @@ function Stat({ label, value, sub }: { label: string; value: number; sub?: strin
   );
 }
 
-function Breakdown({ title, rows }: { title: string; rows: { label: string; n: number }[] }) {
+function Breakdown({ title, rows, empty = "No data yet." }: { title: string; rows: { label: string; n: number }[]; empty?: string }) {
   const max = Math.max(1, ...rows.map((r) => r.n));
   return (
     <div className="adm-panel">
       <h2>{title}</h2>
       {rows.length === 0 ? (
-        <p className="adm-mute">No data yet.</p>
+        <p className="adm-mute">{empty}</p>
       ) : (
         <ul className="adm-bars">
           {rows.map((r) => (

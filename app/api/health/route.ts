@@ -68,10 +68,20 @@ export async function GET() {
   let siteUrl: string | null = null;
   try {
     siteUrl = getSiteUrl();
-    checks.siteUrl = { ok: true };
+    checks.siteUrl = /^https:\/\/(www\.)?visaready\.co$/.test(siteUrl)
+      ? { ok: true }
+      : { ok: true, hint: "Email links don't use visaready.co yet. Once the domain is live, set NEXT_PUBLIC_SITE_URL=https://visaready.co." };
   } catch {
     checks.siteUrl = { ok: false, hint: "Set NEXT_PUBLIC_SITE_URL (e.g. https://visaready.co)." };
   }
+
+  // 6. Ad pixels (optional; informational only)
+  const meta = present("NEXT_PUBLIC_META_PIXEL_ID");
+  const tiktok = present("NEXT_PUBLIC_TIKTOK_PIXEL_ID");
+  checks.adTracking = {
+    ok: true,
+    hint: `Meta Pixel ${meta ? "set" : "not set"}, TikTok Pixel ${tiktok ? "set" : "not set"}${meta || tiktok ? "" : " (no cookie banner shown)"}.`,
+  };
 
   const ok = Object.values(checks).every((c) => c.ok);
   return NextResponse.json(

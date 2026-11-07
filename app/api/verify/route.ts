@@ -5,15 +5,17 @@ import { sendEmail } from "@/lib/email";
 import { welcomeEmail } from "@/lib/email-templates/welcome";
 import { getSiteUrl } from "@/lib/site";
 import { openSignup, type PendingSignup } from "@/lib/signup-token";
+import { newReferralCode, referralCounts, referralUrl } from "@/lib/referral";
+import { MEMBER_COOKIE, createMemberSessionToken, memberCookieOptions, unsubscribeOneClickUrl, unsubscribePageUrl } from "@/lib/member-auth";
+import { clientIp } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // crypto
 
-const TOTAL_FOUNDING_SPOTS = 1000;
-
-// Concurrent verifications can compute the same next founder number. The UNIQUE
-// constraint rejects the loser (P2002), and Serializable isolation can abort a
-// transaction (P2034). Both are safe to retry: the count is recomputed each time.
+// Concurrent verifications can compute the same next founder number, and two
+// new referral codes can (very rarely) collide. The UNIQUE constraints reject
+// the loser (P2002), and Serializable isolation can abort a transaction (P2034).
+// Both are safe to retry: the number and the code are recomputed each time.
 const MAX_ATTEMPTS = 5;
 
 function isRetryable(err: unknown): boolean {
@@ -21,12 +23,6 @@ function isRetryable(err: unknown): boolean {
     err instanceof Prisma.PrismaClientKnownRequestError &&
     (err.code === "P2002" || err.code === "P2034")
   );
-}
-
-function extractIp(req: NextRequest): string | null {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]?.trim().slice(0, 64) || null;
-  return req.headers.get("x-real-ip")?.slice(0, 64) ?? null;
 }
 
 export async function GET(request: NextRequest) {
@@ -42,8 +38,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/verified?status=${opened.reason}`);
   }
 
+  const ip = clientIp(request.headers);
   const audit = {
-    ipAddress: extractIp(request),
+    ipAddress: ip === "unknown" ? null : ip.slice(0, 64),
     userAgent: request.headers.get("user-agent")?.slice(0, 500) ?? null,
   };
 
@@ -64,18 +61,33 @@ export async function GET(request: NextRequest) {
     if (!result) throw new Error("verification exhausted retries");
 
     // Welcome email only on first verification (non-fatal if it fails).
-    if (result.created && result.founderNumber) {
+    if (result.created) {
       try {
-        const tpl = welcomeEmail({ firstName: result.firstName, founderNumber: result.founderNumber });
-        await sendEmail({ to: result.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+        const tpl = welcomeEmail({
+          firstName: result.firstName,
+          referralLink: referralUrl(result.referralCode),
+          memberUrl: `${origin}/member`,
+          unsubscribeUrl: unsubscribePageUrl(result.id),
+        });
+        await sendEmail({
+          to: result.email,
+          subject: tpl.subject,
+          html: tpl.html,
+          text: tpl.text,
+          fromName: "Darian from VisaReady",
+          unsubscribeUrl: unsubscribeOneClickUrl(result.id),
+        });
       } catch (mailErr) {
         console.error("[verify] welcome email failed:", mailErr);
       }
     }
 
-    return NextResponse.redirect(
-      `${origin}/verified?status=success&n=${result.founderNumber ?? ""}`
-    );
+    // Clicking the link proves they own the address, so sign them in: the
+    // "You're in!" page and the member page can then show their referral link.
+    // `new=1` makes the ad pixels count the sign-up once, not on every re-click.
+    const res = NextResponse.redirect(`${origin}/verified?status=success${result.created ? "&new=1" : ""}`);
+    res.cookies.set(MEMBER_COOKIE, createMemberSessionToken(result.id), memberCookieOptions());
+    return res;
   } catch (err) {
     console.error("[verify] error:", err);
     return NextResponse.redirect(`${origin}/verified?status=error`);
@@ -95,11 +107,38 @@ async function createVerifiedSignup(
       const existing = await tx.signup.findUnique({ where: { email: data.email } });
       if (existing) return { ...existing, created: false };
 
-      const count = await tx.signup.count();
-      const founderNumber = count < TOTAL_FOUNDING_SPOTS ? count + 1 : null;
+      // No cap: everyone who confirms is a founding member. The number is
+      // sign-up order, kept for staff only.
+      const { _max } = await tx.signup.aggregate({ _max: { founderNumber: true } });
+      const founderNumber = (_max.founderNumber ?? 0) + 1;
 
+      let referredById: string | null = null;
+      let referralCounted = false;
+      if (data.ref) {
+        const referrer = await tx.signup.findUnique({
+          where: { referralCode: data.ref },
+          select: { id: true, phone: true, ipAddress: true, verifiedAt: true },
+        });
+        if (referrer) {
+          referredById = referrer.id;
+          referralCounted = referralCounts(referrer, {
+            phone: data.phone,
+            ipAddress: audit.ipAddress,
+            at: new Date(),
+          });
+        }
+      }
+
+      const { ref: _ref, ...fields } = data;
       const row = await tx.signup.create({
-        data: { ...data, ...audit, founderNumber },
+        data: {
+          ...fields,
+          ...audit,
+          founderNumber,
+          referralCode: newReferralCode(),
+          referredById,
+          referralCounted,
+        },
       });
       return { ...row, created: true };
     },

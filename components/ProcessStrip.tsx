@@ -1,30 +1,32 @@
+// The checks we will run on every employer once listings go live.
+// Worded as what we will do at launch, not what we have already done.
 export default function ProcessStrip() {
   return (
     <section className="strip">
       <div className="container strip-inner">
         <div className="strip-h">
-          Every employer <em>verified</em> by hand.
+          How we&apos;ll <em>check</em> every job.
         </div>
         <div className="strip-steps">
           <div className="strip-step">
             <span className="n">1</span>
             <div className="b">
-              <h4>Licence pulled</h4>
-              <p>Direct from each country&apos;s sponsor register.</p>
+              <h4>Sponsor licence checked</h4>
+              <p>Against each country&apos;s official sponsor register.</p>
             </div>
           </div>
           <div className="strip-step">
             <span className="n">2</span>
             <div className="b">
-              <h4>Recruiter spoken to</h4>
-              <p>Confirmed open to international applicants.</p>
+              <h4>Open to overseas applicants</h4>
+              <p>Confirmed before a job goes live.</p>
             </div>
           </div>
           <div className="strip-step">
             <span className="n">3</span>
             <div className="b">
-              <h4>Re-checked monthly</h4>
-              <p>Stale listings removed every month.</p>
+              <h4>Re-checked regularly</h4>
+              <p>Closed and stale jobs removed.</p>
             </div>
           </div>
         </div>

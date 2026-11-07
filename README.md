@@ -68,35 +68,29 @@ Works with any provider. After setting `SMTP_*` env vars, add DNS records for `v
 ## Project Structure
 
 ```
-visaready/
-├── app/
-│   ├── api/
-│   │   ├── signup/route.ts     # POST — validate, email sealed confirmation link (no DB write)
-│   │   ├── verify/route.ts     # GET  — open link, create row, assign founder #, send welcome
-│   │   └── spots/route.ts      # GET  — verified spots count for the banner
-│   ├── verified/page.tsx       # Landing page after clicking email link
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
-├── components/
-│   ├── Hero.tsx
-│   ├── Logo.tsx
-│   ├── SignupForm.tsx
-│   ├── LimitedTimeBanner.tsx
-│   └── IndustryTiles.tsx
-├── lib/
-│   ├── db.ts                   # Prisma client singleton
-│   ├── email.ts                # SMTP transporter
-│   ├── email-templates/
-│   │   ├── verification.ts
-│   │   └── welcome.ts
-│   ├── countries.ts            # 16 countries + pricing + USD fallback
-│   └── signup-token.ts         # Encrypted, expiring pending-signup links
-├── prisma/
-│   └── schema.prisma
-├── scripts/
-│   └── security-check.sh
-└── package.json
+app/
+├── page.tsx, learn-more/          # landing + about
+├── faq/ blog/ disclaimer/ privacy/ terms/   # text pages (ContentPage layout)
+├── verified/                      # "You're in!" (share links, ad sign-up event)
+├── member/ member/login/          # member page (status + referral link), email-link sign-in
+├── unsubscribe/                   # confirm-unsubscribe page
+├── admin/                         # staff dashboard
+└── api/
+    ├── signup/      # POST — validate, email sealed confirmation link (no DB write)
+    ├── verify/      # GET  — create row, referral, welcome email, sign member in
+    ├── member/      # login (POST), callback (GET), logout (POST)
+    ├── unsubscribe/ # POST — form or RFC 8058 one-click
+    ├── admin/       # staff login/callback/logout/export
+    └── health/      # setup checks
+components/  Nav, Hero, ProcessStrip, HowItWorks, IndustryCards, SignupForm, Footer,
+             ShareLinks, CookieConsent, SignupConversion, CardPage, ContentPage
+lib/
+├── destinations.ts   # destination dropdown + "the UK, Europe, …" phrase
+├── referral.ts       # codes, links, self-referral rule, reward wording
+├── pixels.ts         # Meta/TikTok pixels, consent-gated
+├── signed-token.ts   # HMAC tokens (staff, member, unsubscribe)
+├── member-auth.ts, admin-auth.ts, signup-token.ts, email.ts, email-templates/
+prisma/  schema.prisma, migrations/
 ```
 
 ## Commands
@@ -113,10 +107,21 @@ visaready/
 ## End-to-End Flow
 
 1. User fills form → `POST /api/signup` validates → seals the details into an encrypted token → SMTP sends the confirmation link. **No database write.**
-2. User clicks link → `GET /api/verify?token=...` → decrypts + checks expiry → serializable transaction with retry creates the `Signup` row and assigns the next founder number (1..1000) → SMTP sends welcome email → redirects to `/verified`
-3. `GET /api/spots` returns the count of signups (all stored signups are verified) for the live counter
+2. User clicks link → `GET /api/verify?token=...` → decrypts + checks expiry → serializable transaction with retry creates the `Signup` row, assigns the next founder number (sign-up order, no cap, staff-only) and a referral code, and records the referrer → welcome email (from "Darian from VisaReady") → signs the member in → `/verified`
+3. `/verified` shows the referral link with WhatsApp/Facebook/X/Copy buttons and fires the ad "sign-up" event (`CompleteRegistration`) once, for new confirmations only.
 
-Re-submitting with an already-registered email returns the same response but sends nothing, so the form can't be used to check who has signed up. Clicking a link twice is idempotent. `/api/signup` has a best-effort in-memory throttle (10/hour per IP, 3/hour per email); put a shared rate limiter in front of it for multi-instance deployments.
+Re-submitting an email that's already on the list sends nothing and shows "You're already on the VisaReady list" with a Sign In button (emails are compared lower-cased; the column is UNIQUE). Clicking a link twice is idempotent. `/api/signup` has a best-effort in-memory throttle (10/hour per IP, 3/hour per email); put a shared rate limiter in front of it for multi-instance deployments.
+
+## Referrals, members and unsubscribe
+
+- Every member gets a link `https://<site>/?ref=CODE`. The code is remembered for the visit and sent with the signup.
+- A referral is **recorded** whenever the code is valid, but only **counted** if it doesn't look like a self-referral: not the same phone number as the referrer, and not confirmed from the referrer's IP within 24 hours of the referrer joining (`lib/referral.ts`). Staff see uncounted ones tagged "not counted".
+- Members sign in at `/member/login` with an emailed link (30 min); the session lasts 30 days.
+- The welcome email has an unsubscribe link and `List-Unsubscribe` headers. Unsubscribed members are tagged in the dashboard and left out of "Copy emails".
+
+## Ad tracking
+
+Set `NEXT_PUBLIC_META_PIXEL_ID` and/or `NEXT_PUBLIC_TIKTOK_PIXEL_ID` in Vercel and redeploy. A cookie banner then asks visitors; the pixels load only after "Accept". With neither set, nothing loads and no banner shows.
 
 ## Staff Dashboard (`/admin`)
 

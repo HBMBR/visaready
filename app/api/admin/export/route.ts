@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { currentAdmin } from "@/lib/admin-auth";
 import { countryName, parseFilters, whereFor } from "@/lib/admin-query";
+import { destinationName } from "@/lib/destinations";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,11 +26,20 @@ export async function GET(request: NextRequest) {
     where: whereFor(filters),
     orderBy: { verifiedAt: "desc" },
     take: MAX_ROWS,
+    include: {
+      referredBy: { select: { email: true } },
+      _count: { select: { referrals: { where: { referralCounted: true } } } },
+    },
   });
 
   console.log(`[admin] export by ${staff}: ${rows.length} rows, filters=${JSON.stringify({ ...filters, page: undefined })}`);
 
-  const header = ["First name", "Last name", "Email", "Phone", "Nationality", "Nationality code", "Desired role", "Founder number", "Signed up (UTC)"];
+  const header = [
+    "First name", "Last name", "Email", "Phone", "Nationality", "Nationality code", "Desired role", "Destination",
+    "Referral code", "Confirmed referrals", "Referred by (email)", "Referral counted", "Unsubscribed (UTC)",
+    "Founder number", "Signed up (UTC)",
+  ];
+  const ts = (d: Date | null) => (d ? d.toISOString().replace("T", " ").slice(0, 19) : "");
   const lines = [header.join(",")];
   for (const r of rows) {
     lines.push(
@@ -43,8 +53,14 @@ export async function GET(request: NextRequest) {
         cell(countryName(r.nationality)),
         cell(r.nationality),
         cell(r.desiredRole),
+        cell(r.destination ? destinationName(r.destination) : ""),
+        cell(r.referralCode),
+        cell(r._count.referrals),
+        cell(r.referredBy?.email),
+        cell(r.referredBy ? (r.referralCounted ? "yes" : "no") : ""),
+        cell(ts(r.unsubscribedAt)),
         cell(r.founderNumber),
-        cell(r.verifiedAt.toISOString().replace("T", " ").slice(0, 19)),
+        cell(ts(r.verifiedAt)),
       ].join(",")
     );
   }

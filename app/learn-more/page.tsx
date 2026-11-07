@@ -1,10 +1,11 @@
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { DESTINATIONS_PHRASE } from "@/lib/destinations";
 
 export const metadata = {
   title: "Learn More — VisaReady",
-  description: "What VisaReady is, why we're building it, and how it helps African professionals access global visa-sponsored work.",
+  description: "What VisaReady is, why we're building it, and how it will help African professionals find jobs abroad with employers that sponsor visas.",
 };
 
 export default function LearnMore() {
@@ -33,10 +34,10 @@ export default function LearnMore() {
           <div style={{ marginBottom: 44 }}>
             <h2 style={{ fontSize: 30, marginBottom: 14 }}>What is VisaReady?</h2>
             <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-mute)" }}>
-              VisaReady is a hand-vetted register of visa-sponsoring employers, built for African professionals
-              looking for real work abroad. Every employer on the platform is confirmed to hold an active
-              sponsor licence, has been spoken to by our team, and is re-checked monthly. No dead listings,
-              no recruiters fishing, no applications into the void.
+              VisaReady is a job search platform for African professionals who want to work abroad. We bring
+              together jobs in {DESTINATIONS_PHRASE} from employers that sponsor visas, check employers
+              against official sponsor registers, and show you the visa requirements so you know what to
+              expect before you apply. We&apos;re launching soon. Join the waitlist for early access.
             </p>
           </div>
 
@@ -49,8 +50,8 @@ export default function LearnMore() {
               Candidates waste months chasing dead ends — and pay agents thousands of dollars for the privilege.
             </p>
             <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-mute)", marginTop: 14 }}>
-              VisaReady cuts the noise. Every job on our platform is one you can actually apply for from where
-              you are today — verified, current, and sponsoring.
+              VisaReady cuts the noise: no jobs that turn out to be closed to overseas applicants, no endless
+              scrolling, and no paying agents for jobs or visas.
             </p>
           </div>
 
@@ -66,10 +67,10 @@ export default function LearnMore() {
           <div style={{ marginBottom: 44 }}>
             <h2 style={{ fontSize: 30, marginBottom: 14 }}>How it works</h2>
             <ol style={{ fontSize: 17, lineHeight: 1.8, color: "var(--ink-mute)", paddingLeft: 22 }}>
-              <li><strong style={{ color: "var(--ink)" }}>Sign up</strong> — tell us your nationality, desired role, and contact details.</li>
-              <li><strong style={{ color: "var(--ink)" }}>Browse verified jobs</strong> — every listing comes with a confirmed sponsor licence, visa pathway, and recruiter contact.</li>
-              <li><strong style={{ color: "var(--ink)" }}>Apply with confidence</strong> — you&apos;re applying to roles that are actually open to you.</li>
-              <li><strong style={{ color: "var(--ink)" }}>Locked-in pricing</strong> — founding members lock in 50% off for life.</li>
+              <li><strong style={{ color: "var(--ink)" }}>Join the waitlist</strong> — tell us your nationality, the role you want and where you&apos;d like to work.</li>
+              <li><strong style={{ color: "var(--ink)" }}>Browse jobs from sponsoring employers</strong> — at launch, each listing shows the checks we&apos;ve done and the visa route it relates to.</li>
+              <li><strong style={{ color: "var(--ink)" }}>Apply with your eyes open</strong> — you still need to meet the visa requirements; we show you what they are and link to the official rules.</li>
+              <li><strong style={{ color: "var(--ink)" }}>Locked-in pricing</strong> — founding members get 50% off for life.</li>
             </ol>
           </div>
 
@@ -83,8 +84,12 @@ export default function LearnMore() {
           </div>
 
           <div style={{ textAlign: "center", marginTop: 56, paddingTop: 40, borderTop: "1px solid var(--rule)" }}>
-            <Link href="/" className="btn btn-fill" style={{ padding: "14px 30px", fontSize: 15 }}>
-              Reserve My Spot
+            <p style={{ fontSize: 15, lineHeight: 1.65, color: "var(--ink-mute)", maxWidth: "60ch", margin: "0 auto 28px" }}>
+              VisaReady is not a recruitment agency, law firm or government body. We don&apos;t give immigration
+              advice and can&apos;t guarantee a job or a visa.
+            </p>
+            <Link href="/#signup" className="btn btn-fill" style={{ padding: "14px 30px", fontSize: 15 }}>
+              Join the waitlist free
             </Link>
           </div>
 

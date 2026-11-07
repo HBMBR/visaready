@@ -1,5 +1,20 @@
 // Shared email branding — keeps both templates in sync with the site.
 
+import { getSiteUrl } from "@/lib/site";
+
+export const EMAIL_DISCLAIMER =
+  "VisaReady is not a recruitment agency or government body and does not guarantee a job or visa.";
+
+/** Plain-text footer, matching the HTML one. */
+export function textFooter(unsubscribeUrl?: string): string {
+  const lines = [
+    `${getSiteUrl().replace(/^https?:\/\//, "")} | support@visaready.co`,
+    EMAIL_DISCLAIMER,
+  ];
+  if (unsubscribeUrl) lines.push(`Unsubscribe: ${unsubscribeUrl}`);
+  return `\n--\n${lines.join("\n")}\n`;
+}
+
 export const BRAND = {
   blue: "#1e3a8a",
   blueDeep: "#16306f",
@@ -20,8 +35,13 @@ const FONT_LINK = `<link href="https://fonts.googleapis.com/css2?family=Bitter:i
 const DISPLAY_FONT = `'Bitter', 'Roboto Slab', Georgia, serif`;
 const BODY_FONT = `'Inter', -apple-system, 'Segoe UI', Arial, sans-serif`;
 
-/** HTML email shell with VisaReady header */
-export function emailShell(body: string): string {
+/** HTML email shell with VisaReady header. Pass unsubscribeUrl on marketing/welcome mail. */
+export function emailShell(body: string, opts: { unsubscribeUrl?: string } = {}): string {
+  const site = getSiteUrl();
+  const siteLabel = site.replace(/^https?:\/\//, "");
+  const unsubscribe = opts.unsubscribeUrl
+    ? `<p style="margin:6px 0;"><a href="${opts.unsubscribeUrl}" style="color:${BRAND.inkMute};text-decoration:underline;">Unsubscribe</a> from VisaReady emails</p>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,11 +77,13 @@ ${FONT_LINK}
   <!-- Footer -->
   <div style="text-align:center;margin-top:24px;padding:0 16px;font-family:${BODY_FONT};font-size:12px;color:${BRAND.inkMute};line-height:1.6;">
     <p style="margin:6px 0;">
-      <a href="https://visaready.co" style="color:${BRAND.blue};text-decoration:none;font-weight:600;">VisaReady.co</a>
+      <a href="${site}" style="color:${BRAND.blue};text-decoration:none;font-weight:600;">${siteLabel}</a>
       &nbsp;·&nbsp;
       <a href="mailto:support@visaready.co" style="color:${BRAND.blue};text-decoration:none;font-weight:600;">support@visaready.co</a>
     </p>
-    <p style="margin:6px 0;">© ${new Date().getFullYear()} VisaReady · Empowering African talent globally.</p>
+    <p style="margin:6px 0;">${EMAIL_DISCLAIMER}</p>
+    ${unsubscribe}
+    <p style="margin:6px 0;">© ${new Date().getFullYear()} VisaReady</p>
   </div>
 
 </div>

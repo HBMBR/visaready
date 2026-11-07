@@ -18,15 +18,27 @@ model Signup {
   firstName         String    @db.VarChar(60)
   lastName          String    @db.VarChar(60)
   email             String    @unique @db.VarChar(255)
-  phone             String    @db.VarChar(40)
+  phone             String?   @db.VarChar(40) // optional since Nov 2026
   nationality       String    @db.VarChar(8) // ISO 3166-1 alpha-2, or "OTHER"
   desiredRole       String    @db.VarChar(80)
+  destination       String?   @db.VarChar(16) // lib/destinations.ts; null for rows created before it was asked
 
   // When the email link was clicked (= when this row was created)
   verifiedAt        DateTime  @default(now())
 
-  // Founder badge — assigned atomically at verification (1..1000)
+  // Sign-up order, assigned at verification. Staff-only: never shown to members.
   founderNumber     Int?      @unique
+
+  // Referrals: everyone gets a personal code (visaready.co/?ref=CODE).
+  referralCode      String    @unique @db.VarChar(16)
+  referredById      String?
+  referredBy        Signup?   @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals         Signup[]  @relation("Referrals")
+  // false when the referral looks like a self-referral (see lib/referral.ts)
+  referralCounted   Boolean   @default(false)
+
+  // Set when the member clicks "unsubscribe" in an email
+  unsubscribedAt    DateTime?
 
   // Audit (captured at the verification click)
   ipAddress         String?   @db.VarChar(64)
@@ -37,4 +49,5 @@ model Signup {
 
   @@index([verifiedAt])
   @@index([createdAt])
+  @@index([referredById])
 }

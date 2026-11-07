@@ -7,7 +7,7 @@ interface IndustryCard {
 const INDUSTRIES: IndustryCard[] = [
   {
     title: "Tech & Innovation",
-    description: "Software engineering, data science, cloud, cybersecurity and AI roles across Europe, Canada and ANZ.",
+    description: "Software engineering, data science, cloud, cybersecurity and AI roles across the UK, Europe, Canada, Australia, New Zealand and the USA.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="13" rx="2" />
@@ -63,7 +63,7 @@ const INDUSTRIES: IndustryCard[] = [
   },
   {
     title: "Healthcare",
-    description: "Nurses, doctors, allied health and care roles at hospitals and clinics on national shortage lists.",
+    description: "Nurses, doctors and allied health roles at hospitals and clinics on national shortage lists.",
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3v18M3 12h18" />
@@ -81,31 +81,40 @@ const INDUSTRIES: IndustryCard[] = [
       </svg>
     ),
   },
+  {
+    title: "Skilled Trades",
+    description: "Electricians, welders, plumbers, mechanics and construction trades at employers sponsoring skilled-worker visas.",
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6z" />
+      </svg>
+    ),
+  },
 ];
 
 export default function IndustryCards() {
   return (
-    <section className="section" id="opportunities">
+    <section className="section" id="industries">
       <div className="container">
         <div className="section-head">
-          <div className="section-eyebrow">Opportunities</div>
+          <div className="section-eyebrow">Industries</div>
           <h2 className="section-title">
             Industries we <em>cover</em>.
           </h2>
           <p className="section-sub">
-            Visa-sponsored roles across the disciplines most in demand globally — software, finance,
-            consulting, design, healthcare and skilled engineering.
+            Visa-sponsored roles in the fields most in demand abroad: tech, finance, engineering,
+            healthcare and more.
           </p>
         </div>
 
         <div className="cards">
           {INDUSTRIES.map((industry) => (
-            <a key={industry.title} href="#" className="card">
+            <a key={industry.title} href="/#signup" className="card">
               <span className="ic">{industry.icon}</span>
               <h3>{industry.title}</h3>
               <p>{industry.description}</p>
               <span className="link">
-                Discover Roles
+                Join to see roles at launch
                 <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <path d="M1.5 5.5h8M6 1.5l3.5 4-3.5 4" />
                 </svg>

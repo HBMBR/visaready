@@ -4,6 +4,7 @@
 import type { Prisma } from "@prisma/client";
 import { COUNTRIES } from "@/lib/countries";
 import { isValidRole } from "@/lib/roles";
+import { isValidDestination } from "@/lib/destinations";
 
 export const PAGE_SIZE = 50;
 
@@ -11,6 +12,7 @@ export interface SignupFilters {
   q: string;
   nationality: string;
   role: string;
+  destination: string;
   from: string; // YYYY-MM-DD
   to: string; // YYYY-MM-DD
   page: number;
@@ -29,6 +31,7 @@ function get(params: Params, key: string): string {
 export function parseFilters(params: Params): SignupFilters {
   const nationality = get(params, "nationality");
   const role = get(params, "role");
+  const destination = get(params, "destination");
   const from = get(params, "from");
   const to = get(params, "to");
   const page = Math.max(1, Number.parseInt(get(params, "page"), 10) || 1);
@@ -36,6 +39,7 @@ export function parseFilters(params: Params): SignupFilters {
     q: get(params, "q").slice(0, 100),
     nationality: VALID_NATIONALITY.has(nationality) ? nationality : "",
     role: isValidRole(role) ? role : "",
+    destination: isValidDestination(destination) ? destination : "",
     from: DATE_RE.test(from) ? from : "",
     to: DATE_RE.test(to) ? to : "",
     page,
@@ -55,6 +59,7 @@ export function whereFor(f: SignupFilters): Prisma.SignupWhereInput {
   }
   if (f.nationality) where.nationality = f.nationality;
   if (f.role) where.desiredRole = f.role;
+  if (f.destination) where.destination = f.destination;
   if (f.from || f.to) {
     where.verifiedAt = {};
     if (f.from) where.verifiedAt.gte = new Date(`${f.from}T00:00:00Z`);
@@ -71,6 +76,7 @@ export function filterQuery(f: SignupFilters, override: Partial<SignupFilters> =
   if (merged.q) qs.set("q", merged.q);
   if (merged.nationality) qs.set("nationality", merged.nationality);
   if (merged.role) qs.set("role", merged.role);
+  if (merged.destination) qs.set("destination", merged.destination);
   if (merged.from) qs.set("from", merged.from);
   if (merged.to) qs.set("to", merged.to);
   if (merged.page > 1) qs.set("page", String(merged.page));
@@ -84,8 +90,8 @@ export function countryName(code: string): string {
 }
 
 /** wa.me link for numbers given in international format (+…); null otherwise. */
-export function whatsappLink(phone: string): string | null {
-  if (!phone.trim().startsWith("+")) return null;
+export function whatsappLink(phone: string | null): string | null {
+  if (!phone || !phone.trim().startsWith("+")) return null;
   const digits = phone.replace(/\D/g, "");
   return digits.length >= 8 ? `https://wa.me/${digits}` : null;
 }
