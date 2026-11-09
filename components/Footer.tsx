@@ -1,8 +1,7 @@
 import { CookieSettingsLink } from "./CookieConsent";
 import { DESTINATIONS_PHRASE } from "@/lib/destinations";
+import { FOOTER_DISCLAIMER } from "@/lib/disclaimer";
 
-export const SITE_DISCLAIMER =
-  "VisaReady is a job search and research tool for African professionals seeking visa-sponsored work abroad. We are not a law firm, recruitment agency or government body, nothing here is legal or immigration advice, and we don't guarantee a job or a visa.";
 
 export default function Footer() {
   return (
@@ -18,7 +17,7 @@ export default function Footer() {
           </div>
           <div className="col foot-disclaimer">
             <h5>Disclaimer</h5>
-            <p>{SITE_DISCLAIMER}</p>
+            <p>{FOOTER_DISCLAIMER}</p>
             <a href="/disclaimer" className="foot-more">Read the full disclaimer →</a>
           </div>
           <div className="col">

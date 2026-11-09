@@ -1,9 +1,9 @@
 // Shared email branding — keeps both templates in sync with the site.
 
 import { getSiteUrl } from "@/lib/site";
+import { SHORT_DISCLAIMER } from "@/lib/disclaimer";
 
-export const EMAIL_DISCLAIMER =
-  "VisaReady is not a recruitment agency or government body and does not guarantee a job or visa.";
+export const EMAIL_DISCLAIMER = SHORT_DISCLAIMER;
 
 /** Plain-text footer, matching the HTML one. */
 export function textFooter(unsubscribeUrl?: string): string {

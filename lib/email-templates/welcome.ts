@@ -1,6 +1,7 @@
 import { BRAND, STYLES, emailShell, ctaButton, heading, paragraph, escapeHtml, textFooter } from "./_shared";
 import { DESTINATIONS_PHRASE } from "@/lib/destinations";
 import { REFERRAL_REWARD } from "@/lib/referral";
+import { getSiteUrl } from "@/lib/site";
 
 interface WelcomeEmailProps {
   firstName: string;
@@ -21,6 +22,7 @@ const BENEFITS: [string, string][] = [
 export function welcomeEmail({ firstName, referralLink, memberUrl, unsubscribeUrl }: WelcomeEmailProps) {
   const safeName = escapeHtml(firstName);
   const safeLink = escapeHtml(referralLink);
+  const faqUrl = `${getSiteUrl()}/faq`;
 
   const text = `Welcome, ${firstName}.
 
@@ -38,6 +40,8 @@ In the meantime, share VisaReady with friends who are looking for work abroad. $
 
 Your personal link: ${referralLink}
 Share it from your member page: ${memberUrl}
+
+Questions? Read our FAQ: ${faqUrl}
 
 Speak soon,
 Darian
@@ -69,6 +73,8 @@ ${textFooter(unsubscribeUrl)}`;
     </p>
 
     ${ctaButton(memberUrl, "Share my link")}
+
+    ${paragraph(`Questions? Read our <a href="${escapeHtml(faqUrl)}" style="color:${BRAND.blue};font-weight:600;">FAQ</a>.`)}
 
     <p style="margin:32px 0 0;font-family:${STYLES.BODY_FONT};font-size:14px;color:${BRAND.ink};line-height:1.6;">Speak soon,</p>
     <p style="margin:6px 0 0;font-family:${STYLES.BODY_FONT};font-size:14px;color:${BRAND.ink};line-height:1.5;">

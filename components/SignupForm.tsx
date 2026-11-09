@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent } from "react";
 import { COUNTRIES } from "@/lib/countries";
 import { ROLES } from "@/lib/roles";
 import { DESTINATIONS } from "@/lib/destinations";
+import { SHORT_DISCLAIMER } from "@/lib/disclaimer";
 
 const REF_KEY = "vr-ref";
 const REF_RE = /^[A-Za-z0-9]{6,16}$/;
@@ -234,6 +235,17 @@ export default function SignupForm() {
           </div>
         </div>
 
+        <p className="form-disclaimer">{SHORT_DISCLAIMER}</p>
+
+        <label className="form-agree">
+          <input type="checkbox" required />
+          <span>
+            I agree to the <a href="/terms" target="_blank">Terms</a>,{" "}
+            <a href="/privacy" target="_blank">Privacy Policy</a> and{" "}
+            <a href="/disclaimer" target="_blank">Disclaimer</a>.
+          </span>
+        </label>
+
         <button type="submit" className="submit" disabled={status === "submitting"}>
           {status === "submitting" && "Sending link…"}
           {(status === "idle" || status === "error") && "Join the waitlist free"}
@@ -258,6 +270,9 @@ export default function SignupForm() {
           <div className="login">
             Already on the list? <a href="/member/login">Sign In</a>
           </div>
+        </div>
+        <div className="form-faq">
+          Questions? <a href="/faq">Read our FAQ</a>
         </div>
       </form>
     </aside>
