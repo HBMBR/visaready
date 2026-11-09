@@ -30,7 +30,9 @@ model Signup {
   founderNumber     Int?      @unique
 
   // Referrals: everyone gets a personal code (visaready.co/?ref=CODE).
-  referralCode      String    @unique @db.VarChar(16)
+  // The app always sets it; the database default covers older code that
+  // doesn't (e.g. production while a preview has migrated a shared database).
+  referralCode      String    @unique @default(dbgenerated("upper(substr(md5((random())::text || (clock_timestamp())::text), 1, 10))")) @db.VarChar(16)
   referredById      String?
   referredBy        Signup?   @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
   referrals         Signup[]  @relation("Referrals")
