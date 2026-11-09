@@ -5,6 +5,19 @@ import { COUNTRIES } from "@/lib/countries";
 import { ROLES } from "@/lib/roles";
 import { DESTINATIONS } from "@/lib/destinations";
 import { SHORT_DISCLAIMER } from "@/lib/disclaimer";
+import { AGREE_MESSAGE, validateSignup, type SignupField } from "@/lib/signup-validation";
+
+// Element id for each field, so a problem can focus the right input.
+const FIELD_ID: Record<SignupField, string> = {
+  firstName: "firstName",
+  lastName: "lastName",
+  email: "email",
+  phone: "phone",
+  nationality: "nationality",
+  desiredRole: "role",
+  destination: "destination",
+  agreed: "agree",
+};
 
 const REF_KEY = "vr-ref";
 const REF_RE = /^[A-Za-z0-9]{6,16}$/;
@@ -31,6 +44,8 @@ export default function SignupForm() {
   });
   const [status, setStatus] = useState<"idle" | "submitting" | "sent" | "existing" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [badField, setBadField] = useState<SignupField | null>(null);
+  const [agreed, setAgreed] = useState(false);
   const [sentTo, setSentTo] = useState("");
   const [ref, setRef] = useState<string | null>(null);
 
@@ -55,30 +70,60 @@ export default function SignupForm() {
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
+    if (badField === key) clearError();
   }
+
+  function clearError() {
+    setBadField(null);
+    setErrorMsg("");
+    setStatus((s) => (s === "error" ? "idle" : s));
+  }
+
+  function showError(field: SignupField | null, message: string) {
+    setStatus("error");
+    setErrorMsg(message);
+    setBadField(field);
+    if (field) document.getElementById(FIELD_ID[field])?.focus();
+  }
+
+  const invalid = (field: SignupField) => (badField === field ? { "aria-invalid": true, className: "invalid" } : {});
 
   // Nothing is saved yet: the server emails a confirmation link, and the
   // details are only stored once that link is clicked.
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (status === "submitting") return;
+
+    // Check everything here first (same rules as the server), so people see
+    // what's missing straight away and nothing is sent without the agreement.
+    const problem = validateSignup({ ...form, agreed });
+    if (problem) {
+      showError(problem.field, problem.message);
+      return;
+    }
+
     setStatus("submitting");
     setErrorMsg("");
+    setBadField(null);
 
     try {
       const res = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, ref }),
+        body: JSON.stringify({ ...form, agreed, ref }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || "Something went wrong. Please try again.");
+        const field = typeof data.field === "string" && data.field in FIELD_ID ? (data.field as SignupField) : null;
+        showError(field, data.error || "Something went wrong. Please try again.");
+        return;
       }
       setSentTo(form.email.trim());
       setStatus(data.existing ? "existing" : "sent");
     } catch (err) {
-      setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : "Unknown error");
+      showError(null, err instanceof Error && err.message !== "Failed to fetch"
+        ? err.message
+        : "We couldn't reach VisaReady. Check your connection and try again.");
     }
   }
 
@@ -142,7 +187,7 @@ export default function SignupForm() {
           <div className="field">
             <label htmlFor="firstName">First Name</label>
             <input
-              id="firstName"
+              id="firstName" {...invalid("firstName")}
               type="text"
               required
               autoComplete="given-name"
@@ -154,7 +199,7 @@ export default function SignupForm() {
           <div className="field">
             <label htmlFor="lastName">Surname</label>
             <input
-              id="lastName"
+              id="lastName" {...invalid("lastName")}
               type="text"
               required
               autoComplete="family-name"
@@ -167,7 +212,7 @@ export default function SignupForm() {
         <div className="field">
           <label htmlFor="email">Email Address</label>
           <input
-            id="email"
+            id="email" {...invalid("email")}
             type="email"
             required
             autoComplete="email"
@@ -180,7 +225,7 @@ export default function SignupForm() {
           <div className="field">
             <label htmlFor="phone">Phone Number <span className="optional">(optional)</span></label>
             <input
-              id="phone"
+              id="phone" {...invalid("phone")}
               type="tel"
               autoComplete="tel"
               placeholder="+27 …"
@@ -191,7 +236,7 @@ export default function SignupForm() {
           <div className="field">
             <label htmlFor="nationality">Nationality</label>
             <select
-              id="nationality"
+              id="nationality" {...invalid("nationality")}
               required
               value={form.nationality}
               onChange={(e) => update("nationality", e.target.value)}
@@ -208,7 +253,7 @@ export default function SignupForm() {
           <div className="field">
             <label htmlFor="role">Desired Role</label>
             <select
-              id="role"
+              id="role" {...invalid("desiredRole")}
               required
               value={form.desiredRole}
               onChange={(e) => update("desiredRole", e.target.value)}
@@ -222,7 +267,7 @@ export default function SignupForm() {
           <div className="field">
             <label htmlFor="destination">Where you&apos;d like to work</label>
             <select
-              id="destination"
+              id="destination" {...invalid("destination")}
               required
               value={form.destination}
               onChange={(e) => update("destination", e.target.value)}
@@ -237,8 +282,18 @@ export default function SignupForm() {
 
         <p className="form-disclaimer">{SHORT_DISCLAIMER}</p>
 
-        <label className="form-agree">
-          <input type="checkbox" required />
+        <label className={`form-agree${badField === "agreed" ? " invalid" : ""}`} htmlFor="agree">
+          <input
+            id="agree"
+            type="checkbox"
+            required
+            checked={agreed}
+            onChange={(e) => {
+              setAgreed(e.target.checked);
+              if (badField === "agreed") clearError();
+            }}
+            {...invalid("agreed")}
+          />
           <span>
             I agree to the <a href="/terms" target="_blank">Terms</a>,{" "}
             <a href="/privacy" target="_blank">Privacy Policy</a> and{" "}
@@ -246,7 +301,12 @@ export default function SignupForm() {
           </span>
         </label>
 
-        <button type="submit" className="submit" disabled={status === "submitting"}>
+        <button
+          type="submit"
+          className="submit"
+          disabled={status === "submitting" || !agreed}
+          title={agreed ? undefined : AGREE_MESSAGE}
+        >
           {status === "submitting" && "Sending link…"}
           {(status === "idle" || status === "error") && "Join the waitlist free"}
           {(status === "idle" || status === "error") && (
@@ -258,7 +318,11 @@ export default function SignupForm() {
           )}
         </button>
 
-        {status === "error" && <div className="form-error">{errorMsg}</div>}
+        {!agreed && status !== "error" && (
+          <p className="form-hint">Tick the box above to agree before you join.</p>
+        )}
+
+        {status === "error" && <div className="form-error" role="alert">{errorMsg}</div>}
 
         <div className="form-foot">
           <a className="learn" href="/learn-more">
