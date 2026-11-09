@@ -6,7 +6,7 @@ interface LogoProps {
 
 export default function Logo({ className = "", inkOnLight = false }: LogoProps) {
   return (
-    <a href="#" className={`brand ${className}`}>
+    <a href="/" className={`brand ${className}`} aria-label="VisaReady home">
       <span className="brand-mark">V</span>
       <span className="brand-name" style={inkOnLight ? { color: "var(--ink)" } : undefined}>
         Visa<em>Ready</em>

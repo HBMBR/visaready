@@ -1,39 +1,71 @@
 "use client";
 
+import { useState, type MouseEvent } from "react";
+import { usePathname } from "next/navigation";
 import Logo from "./Logo";
-import ThemeToggle from "./ThemeToggle";
+
+const LINKS = [
+  { href: "/", label: "Home" },
+  { href: "/#how-it-works", label: "How it works" },
+  { href: "/#industries", label: "Industries" },
+  { href: "/blog", label: "Blog" },
+  { href: "/faq", label: "FAQ" },
+];
+
+/** On the home page, jump to the form and put the cursor in it. */
+export function goToSignup(e: MouseEvent) {
+  const email = document.getElementById("email");
+  if (!email) return; // other pages: follow the /#signup link
+  e.preventDefault();
+  document.getElementById("signup")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  email.focus({ preventScroll: true });
+}
 
 export default function Nav() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  const links = LINKS.map((l) => (
+    <a
+      key={l.href}
+      href={l.href}
+      className={l.href === pathname ? "active" : undefined}
+      onClick={() => setOpen(false)}
+    >
+      {l.label}
+    </a>
+  ));
+
   return (
     <header className="nav">
       <div className="container nav-inner">
         <Logo />
-        <nav className="nav-links">
-          <a href="#" className="active">Home</a>
-          <a href="#opportunities">Opportunities</a>
-          <a href="#talent">Talent</a>
-          <a href="#mentorship">Mentorship</a>
-          <a href="#blog">Blog</a>
-        </nav>
+        <nav className="nav-links" aria-label="Main">{links}</nav>
         <div className="nav-cta">
-          <button className="btn btn-ghost hide-sm" type="button">Sign In</button>
+          <a className="btn btn-ghost hide-sm" href="/member">Sign In</a>
+          <a className="btn btn-fill" href="/#signup" onClick={goToSignup}>Register</a>
           <button
-            className="btn btn-fill"
+            className="icon-btn hamburger"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-expanded={open}
+            aria-controls="mobile-nav"
             type="button"
-            onClick={() => {
-              document.getElementById("email")?.focus();
-            }}
+            onClick={() => setOpen((o) => !o)}
           >
-            Register
-          </button>
-          <ThemeToggle />
-          <button className="icon-btn hamburger" aria-label="Menu" type="button">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <path d="M2 5h12M2 11h12" />
+              {open ? <path d="M3 3l10 10M13 3L3 13" /> : <path d="M2 5h12M2 11h12" />}
             </svg>
           </button>
         </div>
       </div>
+      {open && (
+        <nav id="mobile-nav" className="nav-mobile" aria-label="Main">
+          <div className="container">
+            {links}
+            <a href="/member" onClick={() => setOpen(false)}>Sign In</a>
+          </div>
+        </nav>
+      )}
     </header>
   );
 }

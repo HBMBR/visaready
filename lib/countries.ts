@@ -1,5 +1,5 @@
 // Country list + founding-member pricing per Darian's Coke/McDonald's index research.
-// Standard price = launch price. Founding price = 50% off for life (first 1,000 members).
+// Standard price = launch price. Founding price = 50% off for life (every waitlist member — no cap).
 //
 // Signup is currently free (no deposit), so nothing here is charged. The table
 // still drives the nationality dropdown and is kept for future pricing display.

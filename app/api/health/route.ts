@@ -58,14 +58,30 @@ export async function GET() {
       : { ok: false, hint: "SMTP settings present but login/connection failed (check host, port, user, password)." };
   }
 
-  // 4. Where email links will point
+  // 4. Staff dashboard access list (count only — never the addresses)
+  const staffCount = (process.env.ADMIN_EMAILS ?? "").split(/[,\s]+/).filter(Boolean).length;
+  checks.adminEmails = staffCount
+    ? { ok: true, hint: `${staffCount} staff address${staffCount === 1 ? "" : "es"} can sign in to /admin.` }
+    : { ok: false, hint: "ADMIN_EMAILS is not set — nobody can sign in to /admin." };
+
+  // 5. Where email links will point
   let siteUrl: string | null = null;
   try {
     siteUrl = getSiteUrl();
-    checks.siteUrl = { ok: true };
+    checks.siteUrl = /^https:\/\/(www\.)?visaready\.co$/.test(siteUrl)
+      ? { ok: true }
+      : { ok: true, hint: "Email links don't use visaready.co yet. Once the domain is live, set NEXT_PUBLIC_SITE_URL=https://visaready.co." };
   } catch {
     checks.siteUrl = { ok: false, hint: "Set NEXT_PUBLIC_SITE_URL (e.g. https://visaready.co)." };
   }
+
+  // 6. Ad pixels (optional; informational only)
+  const meta = present("NEXT_PUBLIC_META_PIXEL_ID");
+  const tiktok = present("NEXT_PUBLIC_TIKTOK_PIXEL_ID");
+  checks.adTracking = {
+    ok: true,
+    hint: `Meta Pixel ${meta ? "set" : "not set"}, TikTok Pixel ${tiktok ? "set" : "not set"}${meta || tiktok ? "" : " (no cookie banner shown)"}.`,
+  };
 
   const ok = Object.values(checks).every((c) => c.ok);
   return NextResponse.json(

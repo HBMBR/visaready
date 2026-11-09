@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { COUNTRIES } from "@/lib/countries";
 import { isValidRole } from "@/lib/roles";
+import { isValidDestination } from "@/lib/destinations";
+import { cleanReferralCode } from "@/lib/referral";
 import { sealSignup } from "@/lib/signup-token";
 import { sendEmail } from "@/lib/email";
 import { verificationEmail } from "@/lib/email-templates/verification";
 import { getSiteUrl } from "@/lib/site";
+import { throttled, clientIp } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // crypto
@@ -19,39 +22,11 @@ const VALID_NATIONALITY = new Set<string>([
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[+\d][\d\s\-()]{5,30}$/;
 
-// ---------------------------------------------------------------------------
-// Throttle. With no payment step in front of it, this endpoint sends an email
-// to whatever address is submitted, so it must not be usable to spam people.
-// In-memory and per-instance: good enough for a single server / warm lambda,
-// NOT a hard guarantee on multi-instance serverless — put a shared limiter
-// (e.g. Upstash, Vercel firewall rule) in front for that.
-// ---------------------------------------------------------------------------
-const WINDOW_MS = 60 * 60 * 1000;
+// This endpoint sends an email to whatever address is submitted, and says
+// whether an address is already on the list, so it's throttled to stop it
+// being used to spam people or to check lots of addresses.
 const MAX_PER_IP = 10;
 const MAX_PER_EMAIL = 3;
-const hits = new Map<string, number[]>();
-
-function throttled(key: string, max: number): boolean {
-  const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= max) {
-    hits.set(key, recent);
-    return true;
-  }
-  recent.push(now);
-  hits.set(key, recent);
-  if (hits.size > 10_000) {
-    // crude cap so the map can't grow unbounded
-    for (const [k, v] of hits) if (!v.some((t) => now - t < WINDOW_MS)) hits.delete(k);
-  }
-  return false;
-}
-
-function extractIp(req: NextRequest): string {
-  const fwd = req.headers.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0]?.trim() || "unknown";
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -63,10 +38,13 @@ export async function POST(request: NextRequest) {
 
   const firstName = String(body.firstName ?? "").trim();
   const lastName = String(body.lastName ?? "").trim();
+  // Emails are stored lower-cased and are UNIQUE, so "Jo@X.com" and "jo@x.com" are the same person.
   const email = String(body.email ?? "").trim().toLowerCase();
   const phone = String(body.phone ?? "").trim();
   const nationality = String(body.nationality ?? "").trim();
   const desiredRole = String(body.desiredRole ?? "").trim();
+  const destination = String(body.destination ?? "").trim();
+  const ref = cleanReferralCode(body.ref);
 
   if (!firstName || firstName.length < 2 || firstName.length > 60) {
     return NextResponse.json({ error: "Please enter your first name." }, { status: 400 });
@@ -77,8 +55,8 @@ export async function POST(request: NextRequest) {
   if (!EMAIL_RE.test(email) || email.length > 255) {
     return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
   }
-  if (!PHONE_RE.test(phone)) {
-    return NextResponse.json({ error: "Please provide a valid phone number." }, { status: 400 });
+  if (phone && !PHONE_RE.test(phone)) {
+    return NextResponse.json({ error: "That phone number doesn't look right. Leave it blank if you prefer." }, { status: 400 });
   }
   if (!VALID_NATIONALITY.has(nationality)) {
     return NextResponse.json({ error: "Please select your nationality." }, { status: 400 });
@@ -86,22 +64,24 @@ export async function POST(request: NextRequest) {
   if (!isValidRole(desiredRole)) {
     return NextResponse.json({ error: "Please select a desired role." }, { status: 400 });
   }
+  if (!isValidDestination(destination)) {
+    return NextResponse.json({ error: "Please choose where you'd like to work." }, { status: 400 });
+  }
 
-  if (throttled(`ip:${extractIp(request)}`, MAX_PER_IP) || throttled(`email:${email}`, MAX_PER_EMAIL)) {
+  if (throttled(`signup-ip:${clientIp(request.headers)}`, MAX_PER_IP) || throttled(`signup-email:${email}`, MAX_PER_EMAIL)) {
     return NextResponse.json(
       { error: "Too many sign-up attempts. Please check your inbox or try again in an hour." },
       { status: 429 }
     );
   }
 
-  // The response is identical whether or not the email is already registered,
-  // so the form can't be used to probe who has signed up.
-  const ok = NextResponse.json({ ok: true });
-
   try {
     // Read-only check — nothing is written until the link is clicked.
     const existing = await prisma.signup.findUnique({ where: { email }, select: { id: true } });
-    if (existing) return ok;
+    if (existing) {
+      // Already on the list: no second account, no second email.
+      return NextResponse.json({ ok: true, existing: true });
+    }
   } catch (err) {
     console.error("[signup] db lookup failed:", err);
     return NextResponse.json(
@@ -111,7 +91,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const token = sealSignup({ firstName, lastName, email, phone, nationality, desiredRole });
+    const token = sealSignup({
+      firstName,
+      lastName,
+      email,
+      phone: phone || null,
+      nationality,
+      desiredRole,
+      destination,
+      ref,
+    });
     const verifyUrl = `${getSiteUrl()}/api/verify?token=${encodeURIComponent(token)}`;
     const tpl = verificationEmail({ firstName, verifyUrl });
     await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
@@ -123,5 +112,5 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return ok;
+  return NextResponse.json({ ok: true });
 }

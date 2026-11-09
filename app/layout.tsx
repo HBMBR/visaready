@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import CookieConsent from "@/components/CookieConsent";
+import { DESTINATIONS_PHRASE } from "@/lib/destinations";
+
+const DESCRIPTION = `Jobs in ${DESTINATIONS_PHRASE} from employers that sponsor visas, for African professionals. Join the waitlist free and get 50% off for life as a founding member.`;
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://visaready.co"),
-  title: "VisaReady — Empowering African Talent Globally",
-  description:
-    "The premium platform for Africa's next generation of leaders. Founding members lock in 50% off for life. Verified visa-sponsored jobs around the world.",
+  title: "VisaReady — Visa-sponsored jobs for African professionals",
+  description: DESCRIPTION,
   openGraph: {
-    title: "VisaReady — Empowering African Talent Globally",
-    description:
-      "The hand-vetted register of visa-sponsoring employers — built for African professionals seeking real work abroad.",
+    title: "VisaReady — Stop wasting time on jobs that can't sponsor your visa",
+    description: DESCRIPTION,
     url: "https://visaready.co",
     siteName: "VisaReady",
     type: "website",
@@ -31,7 +33,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   );
 }

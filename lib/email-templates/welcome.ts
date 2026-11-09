@@ -1,72 +1,90 @@
-import { BRAND, STYLES, emailShell, ctaButton, heading, paragraph, escapeHtml } from "./_shared";
+import { BRAND, STYLES, emailShell, ctaButton, heading, paragraph, escapeHtml, textFooter } from "./_shared";
+import { DESTINATIONS_PHRASE } from "@/lib/destinations";
+import { REFERRAL_REWARD } from "@/lib/referral";
+import { getSiteUrl } from "@/lib/site";
 
 interface WelcomeEmailProps {
   firstName: string;
-  founderNumber: number;
+  referralLink: string;
+  memberUrl: string;
+  unsubscribeUrl: string;
 }
 
-export function welcomeEmail({ firstName, founderNumber }: WelcomeEmailProps) {
+// Copy from "VisaReady Landing Page — Edits for Han" (Nov 2026).
+
+const BENEFITS: [string, string][] = [
+  ["Early access", "in before the public launch"],
+  ["50% off for life", "your founding rate, for as long as you stay a member"],
+  ["30-day free trial", "full access when we launch"],
+  ["Jobs from employers that sponsor visas", `in ${DESTINATIONS_PHRASE}`],
+];
+
+export function welcomeEmail({ firstName, referralLink, memberUrl, unsubscribeUrl }: WelcomeEmailProps) {
   const safeName = escapeHtml(firstName);
-  const seatPadded = String(founderNumber).padStart(4, "0");
+  const safeLink = escapeHtml(referralLink);
+  const faqUrl = `${getSiteUrl()}/faq`;
 
-  const text = `Welcome to VisaReady, ${firstName}.
+  const text = `Welcome, ${firstName}.
 
-You're founding member #${seatPadded} of 1,000 — your seat is locked in for life.
+Thanks for joining. You're now a VisaReady founding member, and your 50% discount is locked in for life.
 
-What you get as a founding member:
-- First access to every visa-sponsored job, before anyone else
-- Priority placement when employers review candidates
-- 50% off for life — your locked-in rate, forever
-- Full 30-day free trial when we launch
-- Direct line to our visa team as you apply
+FOUNDING MEMBER · 50% off for life
 
-What happens next:
-We're adding 1,000+ verified visa-sponsored jobs across Tech, Finance, Engineering, Healthcare, Sales, Marketing and more. You'll get early-access credentials before public launch — 7 days ahead of everyone else.
+What you get
+${BENEFITS.map(([t, d]) => `- ${t}: ${d}`).join("\n")}
 
-Welcome aboard. Your international career starts here.
+What happens next
+We're building VisaReady now. We'll email you before launch with your early-access link.
 
-— The VisaReady Team
-https://visaready.co | support@visaready.co
-`;
+In the meantime, share VisaReady with friends who are looking for work abroad. ${REFERRAL_REWARD}
+
+Your personal link: ${referralLink}
+Share it from your member page: ${memberUrl}
+
+Questions? Read our FAQ: ${faqUrl}
+
+Speak soon,
+Darian
+Founder, VisaReady
+${textFooter(unsubscribeUrl)}`;
 
   const body = `
     ${heading("Welcome,", `${safeName}.`)}
-    ${paragraph(`<strong style="color:${BRAND.blue};">Your founding seat is locked in for life.</strong> You're part of an exclusive group getting first access to verified visa-sponsored opportunities around the world.`)}
+    ${paragraph(`Thanks for joining. You're now a VisaReady founding member, and your <strong style="color:${BRAND.blue};">50% discount is locked in for life</strong>.`)}
 
-    <!-- Founder seat badge -->
+    <!-- Founding member card -->
     <div style="background:linear-gradient(135deg,#fef3c7 0%,${BRAND.goldSoft} 100%);border:1px solid rgba(200,154,60,0.4);border-radius:14px;padding:22px 24px;margin:26px 0;text-align:center;">
-      <p style="margin:0 0 4px;font-family:${STYLES.BODY_FONT};font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${BRAND.blueDeep};">Founding Member</p>
-      <p style="margin:0;font-family:${STYLES.DISPLAY_FONT};font-weight:700;font-style:italic;font-size:42px;line-height:1;letter-spacing:-0.02em;color:${BRAND.ink};">#${seatPadded}</p>
-      <p style="margin:6px 0 0;font-family:${STYLES.BODY_FONT};font-size:12px;color:${BRAND.blueDeep};letter-spacing:0.04em;">of 1,000</p>
+      <p style="margin:0 0 6px;font-family:${STYLES.BODY_FONT};font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${BRAND.blueDeep};">Founding Member</p>
+      <p style="margin:0;font-family:${STYLES.DISPLAY_FONT};font-weight:700;font-style:italic;font-size:28px;line-height:1.15;letter-spacing:-0.02em;color:${BRAND.ink};">50% off for life</p>
     </div>
 
-    <!-- Benefits -->
     <h2 style="margin:32px 0 14px;font-family:${STYLES.DISPLAY_FONT};font-weight:700;font-size:21px;letter-spacing:-0.02em;color:${BRAND.ink};">What you get</h2>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;font-family:${STYLES.BODY_FONT};">
-      ${benefitRow("First access", "Every visa-sponsored job, before anyone else sees it")}
-      ${benefitRow("Priority placement", "Your profile sits at the top when employers review candidates")}
-      ${benefitRow("50% off for life", "Your locked-in rate — forever")}
-      ${benefitRow("Free 30-day trial", "Full platform access when we launch")}
-      ${benefitRow("Visa team support", "Direct line as you apply")}
+      ${BENEFITS.map(([t, d]) => benefitRow(t, d)).join("\n")}
     </table>
 
-    <!-- What's next -->
     <h2 style="margin:32px 0 14px;font-family:${STYLES.DISPLAY_FONT};font-weight:700;font-size:21px;letter-spacing:-0.02em;color:${BRAND.ink};">What happens next</h2>
-    ${paragraph(`We're adding <strong>1,000+ verified visa-sponsored jobs</strong> across Tech, Finance, Engineering, Healthcare, Sales, Marketing and more. You'll get early-access credentials <strong>7 days before public launch</strong> — and your founding-member rate applies from day one.`)}
+    ${paragraph("We're building VisaReady now. We'll email you before launch with your early-access link.")}
+    ${paragraph(`In the meantime, share VisaReady with friends who are looking for work abroad. ${REFERRAL_REWARD}`)}
 
-    ${ctaButton("https://visaready.co", "Visit VisaReady")}
-
-    <p style="margin:32px 0 0;font-family:${STYLES.BODY_FONT};font-size:14px;color:${BRAND.ink};line-height:1.6;">
-      Welcome aboard. Your international career starts here.
+    <p style="margin:18px 0 0;font-family:${STYLES.BODY_FONT};font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${BRAND.inkMute};">Your personal link</p>
+    <p style="margin:6px 0 0;padding:12px 14px;background:${BRAND.bg};border:1px solid ${BRAND.rule};border-radius:10px;font-family:${STYLES.BODY_FONT};font-size:14px;word-break:break-all;">
+      <a href="${safeLink}" style="color:${BRAND.blue};text-decoration:none;font-weight:600;">${safeLink}</a>
     </p>
-    <p style="margin:6px 0 0;font-family:${STYLES.BODY_FONT};font-size:14px;color:${BRAND.ink};">
-      — The VisaReady Team
+
+    ${ctaButton(memberUrl, "Share my link")}
+
+    ${paragraph(`Questions? Read our <a href="${escapeHtml(faqUrl)}" style="color:${BRAND.blue};font-weight:600;">FAQ</a>.`)}
+
+    <p style="margin:32px 0 0;font-family:${STYLES.BODY_FONT};font-size:14px;color:${BRAND.ink};line-height:1.6;">Speak soon,</p>
+    <p style="margin:6px 0 0;font-family:${STYLES.BODY_FONT};font-size:14px;color:${BRAND.ink};line-height:1.5;">
+      Darian<br><span style="color:${BRAND.inkMute};">Founder, VisaReady</span>
     </p>
   `;
 
   return {
-    subject: `Welcome to VisaReady, ${firstName} — you're founding member #${seatPadded}`,
-    html: emailShell(body),
+    subject: `Welcome to VisaReady, ${firstName} — you're a founding member`,
+    html: emailShell(body, { unsubscribeUrl }),
     text,
   };
 }

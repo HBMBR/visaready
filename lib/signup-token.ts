@@ -22,9 +22,12 @@ export interface PendingSignup {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
+  phone: string | null;
   nationality: string;
   desiredRole: string;
+  destination: string | null;
+  /** Referral code of the member who shared the link, if any */
+  ref: string | null;
 }
 
 interface SealedPayload extends PendingSignup {
@@ -91,6 +94,19 @@ export function openSignup(token: string): OpenResult {
   }
   if (payload.exp < Date.now()) return { ok: false, reason: "expired" };
 
-  const { firstName, lastName, email, phone, nationality, desiredRole } = payload;
-  return { ok: true, data: { firstName, lastName, email, phone, nationality, desiredRole } };
+  // Links sent before destination/referrals existed don't carry those fields.
+  const { firstName, lastName, email, nationality, desiredRole } = payload;
+  return {
+    ok: true,
+    data: {
+      firstName,
+      lastName,
+      email,
+      phone: payload.phone || null,
+      nationality,
+      desiredRole,
+      destination: payload.destination ?? null,
+      ref: payload.ref ?? null,
+    },
+  };
 }

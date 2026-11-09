@@ -1,4 +1,5 @@
 import SignupForm from "./SignupForm";
+import { DESTINATIONS_PHRASE } from "@/lib/destinations";
 
 export default function Hero() {
   return (
@@ -14,11 +15,11 @@ export default function Hero() {
 
               <div>
                 <h1 className="hero-title">
-                  Empowering African Talent <em>Globally.</em>
+                  Stop wasting time on jobs that can&apos;t <em>sponsor your visa.</em>
                 </h1>
                 <p className="hero-lede">
-                  Connect with top global opportunities, accelerate your career, and build your future.
-                  The premium platform for Africa&apos;s next generation of leaders.
+                  VisaReady brings African professionals jobs in {DESTINATIONS_PHRASE} from employers that
+                  sponsor visas. Join the waitlist free and get 50% off for life as a founding member.
                 </p>
               </div>
             </div>
