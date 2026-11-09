@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { COUNTRIES } from "@/lib/countries";
-import { isValidRole } from "@/lib/roles";
-import { isValidDestination } from "@/lib/destinations";
+import { validateSignup } from "@/lib/signup-validation";
+import { LEGAL_VERSION } from "@/lib/legal";
 import { cleanReferralCode } from "@/lib/referral";
 import { sealSignup } from "@/lib/signup-token";
 import { sendEmail } from "@/lib/email";
@@ -12,15 +11,6 @@ import { throttled, clientIp } from "@/lib/throttle";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs"; // crypto
-
-// Allowed nationality codes (whitelist defense)
-const VALID_NATIONALITY = new Set<string>([
-  ...COUNTRIES.map((c) => c.code),
-  "OTHER",
-]);
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^[+\d][\d\s\-()]{5,30}$/;
 
 // This endpoint sends an email to whatever address is submitted, and says
 // whether an address is already on the list, so it's throttled to stop it
@@ -46,26 +36,20 @@ export async function POST(request: NextRequest) {
   const destination = String(body.destination ?? "").trim();
   const ref = cleanReferralCode(body.ref);
 
-  if (!firstName || firstName.length < 2 || firstName.length > 60) {
-    return NextResponse.json({ error: "Please enter your first name." }, { status: 400 });
-  }
-  if (!lastName || lastName.length < 2 || lastName.length > 60) {
-    return NextResponse.json({ error: "Please enter your last name." }, { status: 400 });
-  }
-  if (!EMAIL_RE.test(email) || email.length > 255) {
-    return NextResponse.json({ error: "Please provide a valid email address." }, { status: 400 });
-  }
-  if (phone && !PHONE_RE.test(phone)) {
-    return NextResponse.json({ error: "That phone number doesn't look right. Leave it blank if you prefer." }, { status: 400 });
-  }
-  if (!VALID_NATIONALITY.has(nationality)) {
-    return NextResponse.json({ error: "Please select your nationality." }, { status: 400 });
-  }
-  if (!isValidRole(desiredRole)) {
-    return NextResponse.json({ error: "Please select a desired role." }, { status: 400 });
-  }
-  if (!isValidDestination(destination)) {
-    return NextResponse.json({ error: "Please choose where you'd like to work." }, { status: 400 });
+  // Same rules as the form, including the Terms / Privacy / Disclaimer box:
+  // a request that skips the form still can't sign up without agreeing.
+  const problem = validateSignup({
+    firstName,
+    lastName,
+    email,
+    phone,
+    nationality,
+    desiredRole,
+    destination,
+    agreed: body.agreed === true,
+  });
+  if (problem) {
+    return NextResponse.json({ error: problem.message, field: problem.field }, { status: 400 });
   }
 
   if (throttled(`signup-ip:${clientIp(request.headers)}`, MAX_PER_IP) || throttled(`signup-email:${email}`, MAX_PER_EMAIL)) {
@@ -100,6 +84,10 @@ export async function POST(request: NextRequest) {
       desiredRole,
       destination,
       ref,
+      // Validation above guarantees they ticked the box; record when, and
+      // which version of the documents. Saved with them once they confirm.
+      agreedAt: Date.now(),
+      termsVersion: LEGAL_VERSION,
     });
     const verifyUrl = `${getSiteUrl()}/api/verify?token=${encodeURIComponent(token)}`;
     const tpl = verificationEmail({ firstName, verifyUrl });

@@ -28,6 +28,10 @@ export interface PendingSignup {
   destination: string | null;
   /** Referral code of the member who shared the link, if any */
   ref: string | null;
+  /** When they ticked "I agree…" and sent the form (unix ms). Missing in links sent before the box existed. */
+  agreedAt?: number | null;
+  /** Version of the Terms / Privacy / Disclaimer they agreed to (lib/legal.ts) */
+  termsVersion?: string | null;
 }
 
 interface SealedPayload extends PendingSignup {
@@ -107,6 +111,8 @@ export function openSignup(token: string): OpenResult {
       desiredRole,
       destination: payload.destination ?? null,
       ref: payload.ref ?? null,
+      agreedAt: typeof payload.agreedAt === "number" ? payload.agreedAt : null,
+      termsVersion: typeof payload.termsVersion === "string" ? payload.termsVersion.slice(0, 32) : null,
     },
   };
 }

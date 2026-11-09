@@ -242,7 +242,21 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                       )}
                     </td>
                     <td>{r.founderNumber ? `#${String(r.founderNumber).padStart(4, "0")}` : "—"}</td>
-                    <td className="adm-nowrap">{fmtDate(r.verifiedAt)}</td>
+                    <td className="adm-nowrap">
+                      {fmtDate(r.verifiedAt)}
+                      {r.termsAgreedAt ? (
+                        <span
+                          className="adm-tag adm-tag-ok"
+                          title={`Agreed to the Terms, Privacy Policy and Disclaimer (version ${r.termsVersion ?? "?"}) on ${fmtDate(r.termsAgreedAt)}`}
+                        >
+                          agreed
+                        </span>
+                      ) : (
+                        <span className="adm-tag" title="Joined before the agreement box was added, so there's no record">
+                          no agreement
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -266,6 +280,8 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
       <p className="adm-foot adm-mute">
         Contact details are personal data. Use them only to communicate about VisaReady, and never email people
         marked Unsubscribed (they&apos;re left out of &ldquo;Copy emails&rdquo;). Founder # is sign-up order, for staff only.
+        &ldquo;agreed&rdquo; means they ticked the Terms, Privacy Policy and Disclaimer box (hover for when and which
+        version); &ldquo;no agreement&rdquo; means they joined before the box was added. The CSV has both.
       </p>
     </main>
   );
