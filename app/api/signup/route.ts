@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateSignup } from "@/lib/signup-validation";
+import { LEGAL_VERSION } from "@/lib/legal";
 import { cleanReferralCode } from "@/lib/referral";
 import { sealSignup } from "@/lib/signup-token";
 import { sendEmail } from "@/lib/email";
@@ -83,6 +84,10 @@ export async function POST(request: NextRequest) {
       desiredRole,
       destination,
       ref,
+      // Validation above guarantees they ticked the box; record when, and
+      // which version of the documents. Saved with them once they confirm.
+      agreedAt: Date.now(),
+      termsVersion: LEGAL_VERSION,
     });
     const verifyUrl = `${getSiteUrl()}/api/verify?token=${encodeURIComponent(token)}`;
     const tpl = verificationEmail({ firstName, verifyUrl });

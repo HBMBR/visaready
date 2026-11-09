@@ -39,6 +39,12 @@ model Signup {
   // false when the referral looks like a self-referral (see lib/referral.ts)
   referralCounted   Boolean   @default(false)
 
+  // Agreement to the Terms, Privacy Policy and Disclaimer (the tick box on the
+  // sign-up form). When they ticked it and sent the form, and which version
+  // (lib/legal.ts). Empty for people who joined before the box existed.
+  termsAgreedAt     DateTime?
+  termsVersion      String?   @db.VarChar(32)
+
   // Set when the member clicks "unsubscribe" in an email
   unsubscribedAt    DateTime?
 
