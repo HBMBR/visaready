@@ -13,6 +13,8 @@ import {
   whereFor,
 } from "@/lib/admin-query";
 import CopyEmails from "./CopyEmails";
+import { adStats, rate } from "@/lib/ad-stats";
+import { utmLabel } from "@/lib/utm";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +71,8 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
     }),
   ]);
 
+  const ads = await adStats();
+
   const referrerRows = await prisma.signup.findMany({
     where: { id: { in: topReferrers.map((r) => r.referredById!).filter(Boolean) } },
     select: { id: true, firstName: true, lastName: true },
@@ -105,16 +109,69 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
 
       {/* ── Headline numbers ── */}
       <section className="adm-stats">
-        <Stat label="Total signups" value={total} />
-        <Stat label="Last 7 days" value={last7} />
-        <Stat label="Last 30 days" value={last30} />
+        <Stat
+          label="Sign-ups (form sent)"
+          value={ads.signups}
+          sub={ads.since ? `each person once, since ${fmtDate(ads.since)}` : "counting starts with the next sign-up"}
+        />
+        <Stat label="Confirmed" value={total} sub={`${last7.toLocaleString()} in the last 7 days`} />
+        <Stat
+          label="Confirmation rate"
+          value={rate(ads.confirmedSince, ads.signups)}
+          sub={ads.since ? `confirmed ÷ sign-ups since ${fmtDate(ads.since)}` : undefined}
+        />
         <Stat label="Confirmed referrals" value={referralsCounted} sub={unsubscribed ? `${unsubscribed.toLocaleString()} unsubscribed from emails` : undefined} />
+      </section>
+
+      {/* ── Ads ── */}
+      <section className="adm-panel">
+        <h2>
+          By ad <span className="adm-mute">from the link&apos;s utm tags: source / campaign / content / term</span>
+        </h2>
+        {ads.byAd.length === 0 ? (
+          <p className="adm-mute">No sign-ups since ad tracking started.</p>
+        ) : (
+          <div className="adm-tablewrap">
+            <table className="adm-table">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Campaign</th>
+                  <th>Content</th>
+                  <th>Term</th>
+                  <th className="adm-num">Sign-ups</th>
+                  <th className="adm-num">Confirmed</th>
+                  <th className="adm-num">Rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ads.byAd.map((r) => (
+                  <tr key={[r.utmSource, r.utmCampaign, r.utmContent, r.utmTerm].join("\u0000")}>
+                    {r.utmSource || r.utmCampaign || r.utmContent || r.utmTerm ? (
+                      <>
+                        <td>{r.utmSource ?? "—"}</td>
+                        <td>{r.utmCampaign ?? "—"}</td>
+                        <td>{r.utmContent ?? "—"}</td>
+                        <td>{r.utmTerm ?? "—"}</td>
+                      </>
+                    ) : (
+                      <td colSpan={4} className="adm-mute">No ad tags (came to the site directly)</td>
+                    )}
+                    <td className="adm-num">{r.signups}</td>
+                    <td className="adm-num">{r.confirmed}</td>
+                    <td className="adm-num">{rate(r.confirmed, r.signups)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       {/* ── Charts ── */}
       <section className="adm-panels">
         <div className="adm-panel adm-panel-wide">
-          <h2>Signups per day <span className="adm-mute">last 30 days (UTC)</span></h2>
+          <h2>Confirmed per day <span className="adm-mute">last 30 days (UTC), {last30.toLocaleString()} in total</span></h2>
           <div className="adm-daily" role="img" aria-label={`Daily signups over the last 30 days, ${last30} in total`}>
             {days.map((d) => (
               <div key={d.key} className="adm-daily-col" title={`${d.label}: ${d.n}`}>
@@ -198,6 +255,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                 <th>Destination</th>
                 <th>Referrals</th>
                 <th>Referred by</th>
+                <th>Ad</th>
                 <th>Founder #</th>
                 <th>Signed up</th>
               </tr>
@@ -205,7 +263,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="adm-empty">
+                  <td colSpan={11} className="adm-empty">
                     {filtered ? "No signups match these filters." : "No confirmed signups yet."}
                   </td>
                 </tr>
@@ -241,6 +299,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
                         <span className="adm-mute">—</span>
                       )}
                     </td>
+                    <td className="adm-ad">{utmLabel(r) || <span className="adm-mute">—</span>}</td>
                     <td>{r.founderNumber ? `#${String(r.founderNumber).padStart(4, "0")}` : "—"}</td>
                     <td className="adm-nowrap">
                       {fmtDate(r.verifiedAt)}
@@ -287,7 +346,7 @@ export default async function AdminDashboard({ searchParams }: PageProps) {
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: number; sub?: string }) {
+function Stat({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
   return (
     <div className="adm-stat">
       <div className="adm-stat-label">{label}</div>

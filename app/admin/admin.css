@@ -52,6 +52,7 @@
 
 .adm-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 @media (min-width: 800px) { .adm-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.adm-ad { font-size: 12.5px; color: var(--ink-mute); white-space: nowrap; }
 .adm-stat { background: var(--paper); border: 1px solid var(--rule); border-radius: 12px; padding: 16px 18px; }
 .adm-stat-label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-mute); }
 .adm-stat-value { font-family: var(--display); font-weight: 700; font-size: 32px; line-height: 1.1; margin-top: 6px; font-variant-numeric: tabular-nums; }

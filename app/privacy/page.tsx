@@ -28,10 +28,17 @@ export default function PrivacyPage() {
         <li>
           <strong>Referrals:</strong> if you joined through a friend&apos;s link, we record who referred you.
         </li>
+        <li>
+          <strong>Which ad brought you:</strong> if you came to VisaReady from one of our ads, the link&apos;s
+          tags (for example &ldquo;meta&rdquo;, the campaign and the ad&apos;s name) are saved with your sign-up.
+        </li>
       </ul>
       <p>
-        We don&apos;t store anything until you click the confirmation link in our email. If you never click it, your
-        details are not saved.
+        We don&apos;t store your name, email or phone number until you click the confirmation link in our email. If
+        you never click it, those details are not saved. To count how many people sign up from each ad, we do keep
+        an anonymous record that the form was sent: the date, your nationality, role and destination, the ad tags,
+        and a scrambled code made from your email that can&apos;t be turned back into it. It only lets us count each
+        person once.
       </p>
 
       <h2>How we use it</h2>

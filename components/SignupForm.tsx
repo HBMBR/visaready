@@ -6,6 +6,8 @@ import { ROLES } from "@/lib/roles";
 import { DESTINATIONS } from "@/lib/destinations";
 import { SHORT_DISCLAIMER } from "@/lib/disclaimer";
 import { AGREE_MESSAGE, validateSignup, type SignupField } from "@/lib/signup-validation";
+import { storedUtm } from "@/lib/utm";
+import { trackFormSubmitted } from "@/lib/pixels";
 
 // Element id for each field, so a problem can focus the right input.
 const FIELD_ID: Record<SignupField, string> = {
@@ -110,7 +112,7 @@ export default function SignupForm() {
       const res = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, agreed, ref }),
+        body: JSON.stringify({ ...form, agreed, ref, utm: storedUtm() }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -120,6 +122,9 @@ export default function SignupForm() {
       }
       setSentTo(form.email.trim());
       setStatus(data.existing ? "existing" : "sent");
+      // Form sent, confirmation email on its way. The "Lead" event comes later,
+      // when they click the link.
+      if (!data.existing) trackFormSubmitted();
     } catch (err) {
       showError(null, err instanceof Error && err.message !== "Failed to fetch"
         ? err.message

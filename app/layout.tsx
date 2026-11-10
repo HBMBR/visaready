@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import CookieConsent from "@/components/CookieConsent";
+import Tracking from "@/components/Tracking";
 import { DESTINATIONS_PHRASE } from "@/lib/destinations";
 
 const DESCRIPTION = `Jobs in ${DESTINATIONS_PHRASE} from employers that sponsor visas, for African professionals. Join the waitlist free and get 50% off for life as a founding member.`;
@@ -16,6 +17,8 @@ export const metadata: Metadata = {
     siteName: "VisaReady",
     type: "website",
   },
+  // Meta domain verification. The same value is also a DNS TXT record on visaready.co.
+  other: { "facebook-domain-verification": "91pcozq0nyektgul6bmcix93fysk6o" },
 };
 
 export default function RootLayout({
@@ -36,6 +39,7 @@ export default function RootLayout({
       <body>
         {children}
         <CookieConsent />
+        <Tracking />
       </body>
     </html>
   );

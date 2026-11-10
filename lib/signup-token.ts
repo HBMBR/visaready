@@ -11,6 +11,7 @@
 // Requires SIGNUP_TOKEN_SECRET (32+ random chars). Rotating it invalidates every
 // outstanding verification link, which is the intended way to revoke them all.
 
+import { cleanUtm, type Utm } from "@/lib/utm";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 
 export const TOKEN_TTL_HOURS = 48;
@@ -32,6 +33,8 @@ export interface PendingSignup {
   agreedAt?: number | null;
   /** Version of the Terms / Privacy / Disclaimer they agreed to (lib/legal.ts) */
   termsVersion?: string | null;
+  /** Ad tags from the link they came in on (lib/utm.ts). Missing in older links. */
+  utm?: Utm | null;
 }
 
 interface SealedPayload extends PendingSignup {
@@ -113,6 +116,7 @@ export function openSignup(token: string): OpenResult {
       ref: payload.ref ?? null,
       agreedAt: typeof payload.agreedAt === "number" ? payload.agreedAt : null,
       termsVersion: typeof payload.termsVersion === "string" ? payload.termsVersion.slice(0, 32) : null,
+      utm: payload.utm ? cleanUtm(payload.utm) : null,
     },
   };
 }
