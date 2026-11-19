@@ -1,14 +1,20 @@
 // Meta Pixel + TikTok Pixel, loaded only after the visitor accepts cookies.
 //
-// IDs come from NEXT_PUBLIC_META_PIXEL_ID / NEXT_PUBLIC_TIKTOK_PIXEL_ID (set in
-// Vercel, then redeploy — NEXT_PUBLIC_ values are baked in at build time).
-// With neither set, nothing loads and no cookie banner is shown.
+// Events (what the ads optimise for):
+//   PageView              every page, including moves between pages
+//   CompleteRegistration  sign-up form sent (confirmation email on its way)
+//   Lead                  email confirmed ("You're in!" page): the main one
+//
+// The Meta Pixel ID is public (it's in every page's source anyway), so it has
+// a built-in default; NEXT_PUBLIC_META_PIXEL_ID in Vercel overrides it.
+// TikTok only loads when NEXT_PUBLIC_TIKTOK_PIXEL_ID is set.
 //
 // Client-only module.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export const META_PIXEL_ID = (process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "").trim();
+const DEFAULT_META_PIXEL_ID = "1051826217917551";
+export const META_PIXEL_ID = (process.env.NEXT_PUBLIC_META_PIXEL_ID || DEFAULT_META_PIXEL_ID).trim();
 export const TIKTOK_PIXEL_ID = (process.env.NEXT_PUBLIC_TIKTOK_PIXEL_ID ?? "").trim();
 export const PIXELS_CONFIGURED = Boolean(META_PIXEL_ID || TIKTOK_PIXEL_ID);
 
@@ -24,7 +30,11 @@ export function getConsent(): Consent | null {
   }
 }
 
-let pendingSignup = false;
+type PixelEvent = "Lead" | "CompleteRegistration";
+
+// Events that happened before the visitor answered the cookie banner. They're
+// sent if they accept while still on the page, and dropped if they decline.
+let pending: PixelEvent[] = [];
 let loaded = false;
 
 export function setConsent(v: Consent | null) {
@@ -36,7 +46,11 @@ export function setConsent(v: Consent | null) {
   }
   if (v === "granted") {
     loadPixels(true);
-    if (pendingSignup) trackSignup();
+    const queued = pending;
+    pending = [];
+    queued.forEach(send);
+  } else {
+    pending = [];
   }
   window.dispatchEvent(new Event("vr-consent"));
 }
@@ -108,16 +122,37 @@ export function loadPixels(force = false) {
   if (TIKTOK_PIXEL_ID) loadTikTok(TIKTOK_PIXEL_ID);
 }
 
-/** The "sign-up" conversion. If consent comes later on the same page, it fires then. */
-export function trackSignup() {
+function send(event: PixelEvent) {
+  const w = window as any;
+  if (META_PIXEL_ID) w.fbq?.("track", event);
+  // TikTok has no "Lead" standard event: confirmed sign-ups are its CompleteRegistration.
+  if (TIKTOK_PIXEL_ID && event === "Lead") w.ttq?.track?.("CompleteRegistration");
+}
+
+function track(event: PixelEvent) {
   if (!PIXELS_CONFIGURED) return;
   if (getConsent() !== "granted" && !loaded) {
-    pendingSignup = true;
+    if (!pending.includes(event)) pending.push(event);
     return;
   }
-  pendingSignup = false;
   loadPixels(true);
+  send(event);
+}
+
+/** Email confirmed ("You're in!" page). What the ads optimise for. */
+export function trackLead() {
+  track("Lead");
+}
+
+/** Sign-up form sent; the person still has to confirm their email. */
+export function trackFormSubmitted() {
+  track("CompleteRegistration");
+}
+
+/** A move to another page without a full reload (the first page's PageView is sent on load). */
+export function trackPageView() {
+  if (!loaded) return;
   const w = window as any;
-  if (META_PIXEL_ID) w.fbq?.("track", "CompleteRegistration");
-  if (TIKTOK_PIXEL_ID) w.ttq?.track?.("CompleteRegistration");
+  if (META_PIXEL_ID) w.fbq?.("track", "PageView");
+  if (TIKTOK_PIXEL_ID) w.ttq?.page?.();
 }

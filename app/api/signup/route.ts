@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateSignup } from "@/lib/signup-validation";
 import { LEGAL_VERSION } from "@/lib/legal";
+import { cleanUtm } from "@/lib/utm";
+import { recordSignupAttempt } from "@/lib/signup-attempt";
 import { cleanReferralCode } from "@/lib/referral";
 import { sealSignup } from "@/lib/signup-token";
 import { sendEmail } from "@/lib/email";
@@ -35,6 +37,7 @@ export async function POST(request: NextRequest) {
   const desiredRole = String(body.desiredRole ?? "").trim();
   const destination = String(body.destination ?? "").trim();
   const ref = cleanReferralCode(body.ref);
+  const utm = cleanUtm(body.utm);
 
   // Same rules as the form, including the Terms / Privacy / Disclaimer box:
   // a request that skips the form still can't sign up without agreeing.
@@ -88,6 +91,7 @@ export async function POST(request: NextRequest) {
       // which version of the documents. Saved with them once they confirm.
       agreedAt: Date.now(),
       termsVersion: LEGAL_VERSION,
+      utm,
     });
     const verifyUrl = `${getSiteUrl()}/api/verify?token=${encodeURIComponent(token)}`;
     const tpl = verificationEmail({ firstName, verifyUrl });
@@ -99,6 +103,9 @@ export async function POST(request: NextRequest) {
       { status: 502 }
     );
   }
+
+  // Count it for the staff numbers (anonymous; failures don't affect the person).
+  await recordSignupAttempt({ email, nationality, desiredRole, destination, utm });
 
   return NextResponse.json({ ok: true });
 }

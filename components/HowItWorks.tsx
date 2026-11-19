@@ -9,7 +9,7 @@ const STEPS = [
   },
   {
     title: "Apply with your eyes open",
-    body: "You still need to meet the visa requirements; we show you what they are and link to the official rules.",
+    body: "Understand the visa requirements before you apply, we provide clear guidance and links to the official rules.",
   },
   {
     title: "Locked-in pricing",

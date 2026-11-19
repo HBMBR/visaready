@@ -129,13 +129,14 @@ async function createVerifiedSignup(
         }
       }
 
-      const { ref: _ref, agreedAt, termsVersion, ...fields } = data;
+      const { ref: _ref, agreedAt, termsVersion, utm, ...fields } = data;
       const row = await tx.signup.create({
         data: {
           ...fields,
           ...audit,
           termsAgreedAt: agreedAt ? new Date(agreedAt) : null,
           termsVersion: termsVersion ?? null,
+          ...(utm ?? {}),
           founderNumber,
           referralCode: newReferralCode(),
           referredById,

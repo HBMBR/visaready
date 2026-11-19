@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     "First name", "Last name", "Email", "Phone", "Nationality", "Nationality code", "Desired role", "Destination",
     "Referral code", "Confirmed referrals", "Referred by (email)", "Referral counted", "Unsubscribed (UTC)",
     "Agreed to Terms/Privacy/Disclaimer (UTC)", "Terms version",
+    "utm_source", "utm_campaign", "utm_content", "utm_term",
     "Founder number", "Signed up (UTC)",
   ];
   const ts = (d: Date | null) => (d ? d.toISOString().replace("T", " ").slice(0, 19) : "");
@@ -62,6 +63,10 @@ export async function GET(request: NextRequest) {
         cell(ts(r.unsubscribedAt)),
         cell(ts(r.termsAgreedAt)),
         cell(r.termsVersion),
+        cell(r.utmSource),
+        cell(r.utmCampaign),
+        cell(r.utmContent),
+        cell(r.utmTerm),
         cell(r.founderNumber),
         cell(ts(r.verifiedAt)),
       ].join(",")

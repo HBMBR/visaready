@@ -45,6 +45,13 @@ model Signup {
   termsAgreedAt     DateTime?
   termsVersion      String?   @db.VarChar(32)
 
+  // Ad tags from the link they came in on (lib/utm.ts), e.g. meta / waitlist /
+  // ad1-problem-photo / nigeria. Empty if they didn't come from a tagged link.
+  utmSource         String?   @db.VarChar(100)
+  utmCampaign       String?   @db.VarChar(100)
+  utmContent        String?   @db.VarChar(100)
+  utmTerm           String?   @db.VarChar(100)
+
   // Set when the member clicks "unsubscribe" in an email
   unsubscribedAt    DateTime?
 
@@ -58,4 +65,25 @@ model Signup {
   @@index([verifiedAt])
   @@index([createdAt])
   @@index([referredById])
+}
+
+// One row each time the sign-up form is sent and a confirmation email goes out,
+// whether or not the person goes on to confirm. It gives the "sign-ups" total
+// and the sign-up → confirmed rate per ad. Deliberately anonymous: no name,
+// email or phone (those are only stored once someone confirms, in Signup).
+// emailHash is a keyed hash of the email, used only to count each person once.
+model SignupAttempt {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  emailHash   String   @db.VarChar(64)
+  nationality String   @db.VarChar(8)
+  desiredRole String   @db.VarChar(80)
+  destination String?  @db.VarChar(16)
+  utmSource   String?  @db.VarChar(100)
+  utmCampaign String?  @db.VarChar(100)
+  utmContent  String?  @db.VarChar(100)
+  utmTerm     String?  @db.VarChar(100)
+
+  @@index([createdAt])
+  @@index([emailHash])
 }
