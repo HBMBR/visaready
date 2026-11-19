@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyTransport } from "@/lib/email";
 import { getSiteUrl } from "@/lib/site";
+import { META_PIXEL_ID, TIKTOK_PIXEL_ID } from "@/lib/pixels";
 
 // GET /api/health — is everything signup needs in place?
 // Reports pass/fail only. Never returns values of settings or raw errors;
@@ -76,11 +77,10 @@ export async function GET() {
   }
 
   // 6. Ad pixels (optional; informational only)
-  const meta = present("NEXT_PUBLIC_META_PIXEL_ID");
-  const tiktok = present("NEXT_PUBLIC_TIKTOK_PIXEL_ID");
+  // Meta has a built-in default ID (lib/pixels.ts), so check what the site actually uses.
   checks.adTracking = {
     ok: true,
-    hint: `Meta Pixel ${meta ? "set" : "not set"}, TikTok Pixel ${tiktok ? "set" : "not set"}${meta || tiktok ? "" : " (no cookie banner shown)"}.`,
+    hint: `Meta Pixel ${META_PIXEL_ID ? `on (${META_PIXEL_ID})` : "off"}, TikTok Pixel ${TIKTOK_PIXEL_ID ? "on" : "off"}${META_PIXEL_ID || TIKTOK_PIXEL_ID ? "" : " (no cookie banner shown)"}.`,
   };
 
   const ok = Object.values(checks).every((c) => c.ok);
