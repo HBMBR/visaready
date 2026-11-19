@@ -102,8 +102,8 @@ export default function IndustryCards() {
             Industries we <em>cover</em>.
           </h2>
           <p className="section-sub">
-            Visa-sponsored roles in the fields most in demand abroad: tech, finance, engineering,
-            healthcare and more.
+            Explore visa-sponsored roles across some of the world&apos;s most in-demand industries,
+            including technology, finance, engineering, healthcare and more.
           </p>
         </div>
 

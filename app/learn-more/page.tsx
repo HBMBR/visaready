@@ -69,7 +69,7 @@ export default function LearnMore() {
             <ol style={{ fontSize: 17, lineHeight: 1.8, color: "var(--ink-mute)", paddingLeft: 22 }}>
               <li><strong style={{ color: "var(--ink)" }}>Join the waitlist</strong> — tell us your nationality, the role you want and where you&apos;d like to work.</li>
               <li><strong style={{ color: "var(--ink)" }}>Browse jobs from sponsoring employers</strong> — at launch, each listing shows the checks we&apos;ve done and the visa route it relates to.</li>
-              <li><strong style={{ color: "var(--ink)" }}>Apply with your eyes open</strong> — you still need to meet the visa requirements; we show you what they are and link to the official rules.</li>
+              <li><strong style={{ color: "var(--ink)" }}>Apply with your eyes open</strong> — understand the visa requirements before you apply, we provide clear guidance and links to the official rules.</li>
               <li><strong style={{ color: "var(--ink)" }}>Locked-in pricing</strong> — founding members get 50% off for life.</li>
             </ol>
           </div>
